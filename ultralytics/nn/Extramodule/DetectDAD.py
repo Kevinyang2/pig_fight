@@ -1,22 +1,21 @@
+from __future__ import annotations
+
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-import math
-from typing import List, Tuple, Union
+
 from ultralytics.nn.modules.head import Detect
+
 
 class DetectDAD(Detect):
     """
     基于 YOLO Detect 的难度感知头：在分类 logits 上加入按类的动态偏置 beta(d_hat)。
-    继承 Detect，保持训练/推理与 NMS、解码完全兼容。
+    继承 Detect，保持训练/推理与 NMS、解码完全兼容。.
     """
 
-    def __init__(self, nc: int = 80, ch: Tuple = (), D: int = 64, d_hat=None):
+    def __init__(self, nc: int = 80, ch: tuple = (), D: int = 64, d_hat=None):
         super().__init__(nc, ch)
         self.D = D
-        self.mlp = nn.Sequential(
-            nn.Linear(1, D), nn.ReLU(inplace=True), nn.Linear(D, D), nn.ReLU(inplace=True)
-        )
+        self.mlp = nn.Sequential(nn.Linear(1, D), nn.ReLU(inplace=True), nn.Linear(D, D), nn.ReLU(inplace=True))
         self.proj_beta = nn.Linear(D, 1, bias=False)
         # d_hat buffer
         if d_hat is None:
@@ -28,11 +27,11 @@ class DetectDAD(Detect):
         self.register_buffer("d_hat", d_hat_t)
 
     def _beta(self) -> torch.Tensor:
-        e = self.mlp(self.d_hat.view(self.nc, 1))          # [C, D]
-        beta = self.proj_beta(e).view(1, self.nc, 1, 1)    # [1,C,1,1]
+        e = self.mlp(self.d_hat.view(self.nc, 1))  # [C, D]
+        beta = self.proj_beta(e).view(1, self.nc, 1, 1)  # [1,C,1,1]
         return beta
 
-    def forward(self, x: List[torch.Tensor]) -> Union[List[torch.Tensor], Tuple]:
+    def forward(self, x: list[torch.Tensor]) -> list[torch.Tensor] | tuple:
         if self.end2end:
             return self.forward_end2end(x)
 

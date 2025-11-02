@@ -3,13 +3,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 from timm.layers import trunc_normal_
 
-from ultralytics.utils.torch_utils import fuse_conv_and_bn
-
 
 def window_partition(x, window_size):
     B, H, W, C = x.shape
     x = x.view(B, H // window_size, window_size, W // window_size, window_size, C)
-    windows = x.permute(0, 1, 3, 2, 4, 5).contiguous().view(-1, window_size ** 2, C)
+    windows = x.permute(0, 1, 3, 2, 4, 5).contiguous().view(-1, window_size**2, C)
     return windows
 
 
@@ -28,7 +26,7 @@ def get_relative_positions(window_size):
     coords_flatten = torch.flatten(coords, 1)
     relative_positions = coords_flatten[:, :, None] - coords_flatten[:, None, :]
     relative_positions = relative_positions.permute(1, 2, 0).contiguous()
-    relative_positions_log = torch.sign(relative_positions) * torch.log(1. + relative_positions.abs())
+    relative_positions_log = torch.sign(relative_positions) * torch.log(1.0 + relative_positions.abs())
     return relative_positions_log
 
 
@@ -39,15 +37,11 @@ class WATT(nn.Module):
         self.window_size = window_size
         self.num_heads = num_heads
         head_dim = dim // num_heads
-        self.scale = head_dim ** -0.5
+        self.scale = head_dim**-0.5
 
         relative_positions = get_relative_positions(self.window_size)
         self.register_buffer("relative_positions", relative_positions)
-        self.meta = nn.Sequential(
-            nn.Linear(2, 256, bias=True),
-            nn.ReLU(True),
-            nn.Linear(256, num_heads, bias=True)
-        )
+        self.meta = nn.Sequential(nn.Linear(2, 256, bias=True), nn.ReLU(True), nn.Linear(256, num_heads, bias=True))
 
         self.softmax = nn.Softmax(dim=-1)
 
@@ -56,7 +50,7 @@ class WATT(nn.Module):
         qkv = qkv.reshape(B_, N, 3, self.num_heads, self.dim // self.num_heads).permute(2, 0, 3, 1, 4)
         q, k, v = qkv[0], qkv[1], qkv[2]
         q = q * self.scale
-        attn = (q @ k.transpose(-2, -1))
+        attn = q @ k.transpose(-2, -1)
         relative_position_bias = self.meta(self.relative_positions)
         relative_position_bias = relative_position_bias.permute(2, 0, 1).contiguous()
         attn = attn + relative_position_bias.unsqueeze(0)
@@ -76,16 +70,16 @@ class Att(nn.Module):
         self.use_attn = use_attn
         self.conv_type = conv_type
 
-        if self.conv_type == 'Conv':
+        if self.conv_type == "Conv":
             self.conv = nn.Sequential(
-                nn.Conv2d(dim, dim, kernel_size=3, padding=1, padding_mode='reflect'),
+                nn.Conv2d(dim, dim, kernel_size=3, padding=1, padding_mode="reflect"),
                 nn.ReLU(True),
-                nn.Conv2d(dim, dim, kernel_size=3, padding=1, padding_mode='reflect')
+                nn.Conv2d(dim, dim, kernel_size=3, padding=1, padding_mode="reflect"),
             )
 
-        if self.conv_type == 'DWConv':
-            self.conv = nn.Conv2d(dim, dim, kernel_size=5, padding=2, groups=dim, padding_mode='reflect')
-        if self.conv_type == 'DWConv' or self.use_attn:
+        if self.conv_type == "DWConv":
+            self.conv = nn.Conv2d(dim, dim, kernel_size=5, padding=2, groups=dim, padding_mode="reflect")
+        if self.conv_type == "DWConv" or self.use_attn:
             self.V = nn.Conv2d(dim, dim, 1)
             self.proj = nn.Conv2d(dim, dim, 1)
         if self.use_attn:
@@ -98,17 +92,24 @@ class Att(nn.Module):
         mod_pad_w = (self.window_size - w % self.window_size) % self.window_size
 
         if shift:
-            x = F.pad(x, (self.shift_size, (self.window_size - self.shift_size + mod_pad_w) % self.window_size,
-                          self.shift_size, (self.window_size - self.shift_size + mod_pad_h) % self.window_size),
-                      mode='reflect')
+            x = F.pad(
+                x,
+                (
+                    self.shift_size,
+                    (self.window_size - self.shift_size + mod_pad_w) % self.window_size,
+                    self.shift_size,
+                    (self.window_size - self.shift_size + mod_pad_h) % self.window_size,
+                ),
+                mode="reflect",
+            )
         else:
-            x = F.pad(x, (0, mod_pad_w, 0, mod_pad_h), 'reflect')
+            x = F.pad(x, (0, mod_pad_w, 0, mod_pad_h), "reflect")
         return x
 
     def forward(self, X):
-        B, C, H, W = X.shape
+        _B, _C, H, W = X.shape
 
-        if self.conv_type == 'DWConv' or self.use_attn:
+        if self.conv_type == "DWConv" or self.use_attn:
             V = self.V(X)
 
         if self.use_attn:
@@ -129,19 +130,19 @@ class Att(nn.Module):
             shifted_out = window_reverse(attn_windows, self.window_size, Ht, Wt)  # B H' W' C
 
             # reverse cyclic shift
-            out = shifted_out[:, self.shift_size:(self.shift_size + H), self.shift_size:(self.shift_size + W), :]
+            out = shifted_out[:, self.shift_size : (self.shift_size + H), self.shift_size : (self.shift_size + W), :]
             attn_out = out.permute(0, 3, 1, 2)
 
-            if self.conv_type in ['Conv', 'DWConv']:
+            if self.conv_type in ["Conv", "DWConv"]:
                 conv_out = self.conv(V)
                 out = self.proj(conv_out + attn_out)
             else:
                 out = self.proj(attn_out)
 
         else:
-            if self.conv_type == 'Conv':
+            if self.conv_type == "Conv":
                 out = self.conv(X)
-            elif self.conv_type == 'DWConv':
+            elif self.conv_type == "DWConv":
                 out = self.proj(self.conv(V))
 
         return out
@@ -153,9 +154,7 @@ class Mlp(nn.Module):
         out_features = out_features or in_features
         hidden_features = hidden_features or in_features
         self.mlp = nn.Sequential(
-            nn.Conv2d(in_features, hidden_features, 1),
-            nn.ReLU(True),
-            nn.Conv2d(hidden_features, out_features, 1)
+            nn.Conv2d(in_features, hidden_features, 1), nn.ReLU(True), nn.Conv2d(hidden_features, out_features, 1)
         )
 
     def forward(self, x):
@@ -164,16 +163,16 @@ class Mlp(nn.Module):
 
 class LayNormal(nn.Module):
     def __init__(self, dim, eps=1e-5, detach_grad=False):
-        super(LayNormal, self).__init__()
+        super().__init__()
         self.eps = eps
         self.detach_grad = detach_grad
         self.weight = nn.Parameter(torch.ones((1, dim, 1, 1)))
         self.bias = nn.Parameter(torch.zeros((1, dim, 1, 1)))
         self.meta1 = nn.Conv2d(1, dim, 1)
         self.meta2 = nn.Conv2d(1, dim, 1)
-        trunc_normal_(self.meta1.weight, std=.02)
+        trunc_normal_(self.meta1.weight, std=0.02)
         nn.init.constant_(self.meta1.bias, 1)
-        trunc_normal_(self.meta2.weight, std=.02)
+        trunc_normal_(self.meta2.weight, std=0.02)
         nn.init.constant_(self.meta2.bias, 0)
 
     def forward(self, input):
@@ -189,31 +188,50 @@ class LayNormal(nn.Module):
 
 
 class LEGM(nn.Module):
-    def __init__(self, dim, num_heads=8, mlp_ratio=4.,
-                 norm_layer=LayNormal, mlp_norm=False,
-                 window_size=8, shift_size=0, use_attn=True, conv_type=None):
+    def __init__(
+        self,
+        dim,
+        num_heads=8,
+        mlp_ratio=4.0,
+        norm_layer=LayNormal,
+        mlp_norm=False,
+        window_size=8,
+        shift_size=0,
+        use_attn=True,
+        conv_type=None,
+    ):
         super().__init__()
         self.use_attn = use_attn
         self.mlp_norm = mlp_norm
 
         self.norm1 = norm_layer(dim) if use_attn else nn.Identity()
-        self.attn = Att(dim, num_heads=num_heads, window_size=window_size,
-                        shift_size=shift_size, use_attn=use_attn, conv_type=conv_type)
+        self.attn = Att(
+            dim,
+            num_heads=num_heads,
+            window_size=window_size,
+            shift_size=shift_size,
+            use_attn=use_attn,
+            conv_type=conv_type,
+        )
 
         self.norm2 = norm_layer(dim) if use_attn and mlp_norm else nn.Identity()
         self.mlp = Mlp(dim, hidden_features=int(dim * mlp_ratio))
 
     def forward(self, x):
         identity = x
-        if self.use_attn: x, rescale, rebias = self.norm1(x)
+        if self.use_attn:
+            x, rescale, rebias = self.norm1(x)
         x = self.attn(x)
-        if self.use_attn: x = x * rescale + rebias
+        if self.use_attn:
+            x = x * rescale + rebias
         x = identity + x
 
         identity = x
-        if self.use_attn and self.mlp_norm: x, rescale, rebias = self.norm2(x)
+        if self.use_attn and self.mlp_norm:
+            x, rescale, rebias = self.norm2(x)
         x = self.mlp(x)
-        if self.use_attn and self.mlp_norm: x = x * rescale + rebias
+        if self.use_attn and self.mlp_norm:
+            x = x * rescale + rebias
         x = identity + x
         return x
 
@@ -294,7 +312,7 @@ class C3k(C3):
 
 class A2C2f_LEGM(nn.Module):
     """
-    A2C2f module with residual enhanced feature extraction using ABlock blocks with area-attention. Also known as R-ELAN
+    A2C2f module with residual enhanced feature extraction using ABlock blocks with area-attention. Also known as R-ELAN.
 
     This class extends the C2f module by incorporating ABlock blocks for fast attention mechanisms and feature extraction.
 
@@ -316,25 +334,25 @@ class A2C2f_LEGM(nn.Module):
     Examples:
         >>> import torch
         >>> from ultralytics.nn.modules import A2C2f
-        >>> model = C2f(c1=64, c2=64, n=1, shortcut=False,g=1, e=0.5)
+        >>> model = C2f(c1=64, c2=64, n=1, shortcut=False, g=1, e=0.5)
         >>> x = torch.randn(2, 64, 128, 128)
         >>> output = model(x)
         >>> print(output.shape)
     """
 
-    def __init__(self, c1, c2, n=1,  shortcut=True , g=1, e=0.5):
+    def __init__(self, c1, c2, n=1, shortcut=True, g=1, e=0.5):
         super().__init__()
         c_ = int(c2 * e)  # hidden channels
         assert c_ % 32 == 0, "Dimension of ABlock be a multiple of 32."
 
         # num_heads = c_ // 64 if c_ // 64 >= 2 else c_ // 32
-        num_heads = c_ // 32
+        c_ // 32
 
         self.cv1 = Conv(c1, c_, 1, 1)
         self.cv2 = Conv((1 + n) * c_, c2, 1)  # optional act=FReLU(c2)
 
         init_values = 0.01  # or smaller
-        self.gamma = nn.Parameter(init_values * torch.ones((c2)), requires_grad=True) if a2 and residual else None
+        self.gamma = nn.Parameter(init_values * torch.ones(c2), requires_grad=True) if a2 and residual else None
 
         self.m = nn.ModuleList(
             nn.Sequential(*(LEGM(c_) for _ in range(2))) if a2 else C3k(c_, c_, 2, shortcut, g) for _ in range(n)
@@ -347,6 +365,3 @@ class A2C2f_LEGM(nn.Module):
         if self.gamma is not None:
             return x + (self.gamma * self.cv2(torch.cat(y, 1)).permute(0, 2, 3, 1)).permute(0, 3, 1, 2)
         return self.cv2(torch.cat(y, 1))
-
-
-
