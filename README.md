@@ -32,7 +32,7 @@
   - `images/train`, `images/val`, `labels/train`, `labels/val`
   - 类别顺序：`0 -> pig_fight`、`1 -> pig_normal`
 - 若使用自定义路径，请修改 `pig.yaml` 中的 `train`, `val`, `test` 字段。
-  数据集链接如下:（提取码可发送邮箱至kevinyang0048@gamail.com进行申请）
+  数据集链接如下:（提取码可发送邮件至kevinyang0048@gamail.com进行申请）
  https://pan.baidu.com/s/1xxO0Us1Vb_LUJCtRLB3QGg
 
 ## 模型训练
@@ -63,9 +63,7 @@
   ```
 - 消融对比：仓库中 `ultralytics/cfg/models/**` 提供了多种注意力/特征融合模块，可通过切换配置验证对 mAP 与 FPS 的影响。
 
-## 打斗事件检测流程
 
-`fight_pipeline.py` 将猪只检测模型（YOLO-A）与打斗识别模型（YOLO-B）串联，并结合时序平滑得到最终事件：
 
 ```bash
 python fight_pipeline.py \
