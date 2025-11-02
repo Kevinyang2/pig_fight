@@ -1,15 +1,13 @@
 import math
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from ultralytics.nn.modules.conv import LightConv
-from ultralytics.utils.torch_utils import fuse_conv_and_bn
-
 
 class SpatialAttentionModule(nn.Module):
     def __init__(self):
-        super(SpatialAttentionModule, self).__init__()
+        super().__init__()
         self.conv2d = nn.Conv2d(in_channels=2, out_channels=1, kernel_size=7, stride=1, padding=3)
         self.sigmoid = nn.Sigmoid()
 
@@ -25,30 +23,38 @@ class PPA(nn.Module):
     def __init__(self, in_features, filters) -> None:
         super().__init__()
 
-        self.skip = conv_block(in_features=in_features,
-                               out_features=filters,
-                               kernel_size=(1, 1),
-                               padding=(0, 0),
-                               norm_type='bn',
-                               activation=False)
-        self.c1 = conv_block(in_features=in_features,
-                             out_features=filters,
-                             kernel_size=(3, 3),
-                             padding=(1, 1),
-                             norm_type='bn',
-                             activation=True)
-        self.c2 = conv_block(in_features=filters,
-                             out_features=filters,
-                             kernel_size=(3, 3),
-                             padding=(1, 1),
-                             norm_type='bn',
-                             activation=True)
-        self.c3 = conv_block(in_features=filters,
-                             out_features=filters,
-                             kernel_size=(3, 3),
-                             padding=(1, 1),
-                             norm_type='bn',
-                             activation=True)
+        self.skip = conv_block(
+            in_features=in_features,
+            out_features=filters,
+            kernel_size=(1, 1),
+            padding=(0, 0),
+            norm_type="bn",
+            activation=False,
+        )
+        self.c1 = conv_block(
+            in_features=in_features,
+            out_features=filters,
+            kernel_size=(3, 3),
+            padding=(1, 1),
+            norm_type="bn",
+            activation=True,
+        )
+        self.c2 = conv_block(
+            in_features=filters,
+            out_features=filters,
+            kernel_size=(3, 3),
+            padding=(1, 1),
+            norm_type="bn",
+            activation=True,
+        )
+        self.c3 = conv_block(
+            in_features=filters,
+            out_features=filters,
+            kernel_size=(3, 3),
+            padding=(1, 1),
+            norm_type="bn",
+            activation=True,
+        )
         self.sa = SpatialAttentionModule()
         self.cn = ECA(filters)
         self.lga2 = LocalGlobalAttention(filters, 2)
@@ -113,7 +119,7 @@ class LocalGlobalAttention(nn.Module):
         # Restore shapes
         local_out = local_out.reshape(B, H // P, W // P, self.output_dim)  # (B, H/P, W/P, output_dim)
         local_out = local_out.permute(0, 3, 1, 2)
-        local_out = F.interpolate(local_out, size=(H, W), mode='bilinear', align_corners=False)
+        local_out = F.interpolate(local_out, size=(H, W), mode="bilinear", align_corners=False)
         output = self.conv(local_out)
 
         return output
@@ -121,14 +127,13 @@ class LocalGlobalAttention(nn.Module):
 
 class ECA(nn.Module):
     def __init__(self, in_channel, gamma=2, b=1):
-        super(ECA, self).__init__()
+        super().__init__()
         k = int(abs((math.log(in_channel, 2) + b) / gamma))
         kernel_size = k if k % 2 else k + 1
         padding = kernel_size // 2
         self.pool = nn.AdaptiveAvgPool2d(output_size=1)
         self.conv = nn.Sequential(
-            nn.Conv1d(in_channels=1, out_channels=1, kernel_size=kernel_size, padding=padding, bias=False),
-            nn.Sigmoid()
+            nn.Conv1d(in_channels=1, out_channels=1, kernel_size=kernel_size, padding=padding, bias=False), nn.Sigmoid()
         )
 
     def forward(self, x):
@@ -140,34 +145,37 @@ class ECA(nn.Module):
 
 
 class conv_block(nn.Module):
-    def __init__(self,
-                 in_features,
-                 out_features,
-                 kernel_size=(3, 3),
-                 stride=(1, 1),
-                 padding=(1, 1),
-                 dilation=(1, 1),
-                 norm_type='bn',
-                 activation=True,
-                 use_bias=True,
-                 groups=1
-                 ):
+    def __init__(
+        self,
+        in_features,
+        out_features,
+        kernel_size=(3, 3),
+        stride=(1, 1),
+        padding=(1, 1),
+        dilation=(1, 1),
+        norm_type="bn",
+        activation=True,
+        use_bias=True,
+        groups=1,
+    ):
         super().__init__()
-        self.conv = nn.Conv2d(in_channels=in_features,
-                              out_channels=out_features,
-                              kernel_size=kernel_size,
-                              stride=stride,
-                              padding=padding,
-                              dilation=dilation,
-                              bias=use_bias,
-                              groups=groups)
+        self.conv = nn.Conv2d(
+            in_channels=in_features,
+            out_channels=out_features,
+            kernel_size=kernel_size,
+            stride=stride,
+            padding=padding,
+            dilation=dilation,
+            bias=use_bias,
+            groups=groups,
+        )
 
         self.norm_type = norm_type
         self.act = activation
 
-        if self.norm_type == 'gn':
+        if self.norm_type == "gn":
             self.norm = nn.GroupNorm(32 if out_features >= 32 else out_features, out_features)
-        if self.norm_type == 'bn':
+        if self.norm_type == "bn":
             self.norm = nn.BatchNorm2d(out_features)
         if self.act:
             # self.relu = nn.GELU()
@@ -258,7 +266,7 @@ class C3k(C3):
 
 class A2C2f_PPA(nn.Module):
     """
-    A2C2f module with residual enhanced feature extraction using ABlock blocks with area-attention. Also known as R-ELAN
+    A2C2f module with residual enhanced feature extraction using ABlock blocks with area-attention. Also known as R-ELAN.
 
     This class extends the C2f module by incorporating ABlock blocks for fast attention mechanisms and feature extraction.
 
@@ -292,13 +300,13 @@ class A2C2f_PPA(nn.Module):
         assert c_ % 32 == 0, "Dimension of ABlock be a multiple of 32."
 
         # num_heads = c_ // 64 if c_ // 64 >= 2 else c_ // 32
-        num_heads = c_ // 32
+        c_ // 32
 
         self.cv1 = Conv(c1, c_, 1, 1)
         self.cv2 = Conv((1 + n) * c_, c2, 1)  # optional act=FReLU(c2)
 
         init_values = 0.01  # or smaller
-        self.gamma = nn.Parameter(init_values * torch.ones((c2)), requires_grad=True) if a2 and residual else None
+        self.gamma = nn.Parameter(init_values * torch.ones(c2), requires_grad=True) if a2 and residual else None
 
         self.m = nn.ModuleList(
             nn.Sequential(*(PPA(c_, c_) for _ in range(2))) if a2 else C3k(c_, c_, 2, shortcut, g) for _ in range(n)
@@ -311,5 +319,3 @@ class A2C2f_PPA(nn.Module):
         if self.gamma is not None:
             return x + (self.gamma * self.cv2(torch.cat(y, 1)).permute(0, 2, 3, 1)).permute(0, 3, 1, 2)
         return self.cv2(torch.cat(y, 1))
-
-
