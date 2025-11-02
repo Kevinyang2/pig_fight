@@ -74,11 +74,7 @@ python fight_pipeline.py \
     --save-video --save-overlay --project runs/fight --name exp01
 ```
 
-- 支持裁剪猪框后批量推理打斗模型（默认开启，可通过 `--no-fight-crop` 关闭）。
-- 事件输出：
-  - `fight_events.csv`：帧级事件区间。
-  - `fight_events_time.csv`：转为秒的事件时间。
-- 可选输出：叠加红框的视频 `fight_overlay.mp4`，便于快速回放。
+
 
 ## 结果展示
 
@@ -87,10 +83,6 @@ python fight_pipeline.py \
 - `results/mAP50(B).png`：记录主要实验在验证集上的 mAP@0.5 指标。
 - `result-v10-BS*/`：不同 batch size/模型结构的预测可视化，用于对比模型稳定性。
 
-## 常见问题
-
-- 推送到 GitHub 前请确认未将体积超过 100 MB 的原始压缩包（如 `data/cifar-10-python.tar.gz`）加入版本控制，可通过 `git lfs` 或 `.gitignore` 处理。
-- 需要导出 ONNX/TensorRT 模型时，可使用 `yolo export model=... format=onnx` 等命令。
 
 ## 致谢
 
