@@ -2,8 +2,9 @@
 
 import os
 import random
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, Dict, Iterator
+from typing import Any
 
 import numpy as np
 import torch
@@ -11,7 +12,7 @@ from PIL import Image
 from torch.utils.data import dataloader, distributed
 
 from ultralytics.cfg import IterableSimpleNamespace
-from ultralytics.data.dataset import GroundingDataset, YOLODataset, YOLOMultiModalDataset, YOLOMultiFrameDataset
+from ultralytics.data.dataset import GroundingDataset, YOLODataset, YOLOMultiFrameDataset, YOLOMultiModalDataset
 from ultralytics.data.loaders import (
     LOADERS,
     LoadImagesAndVideos,
@@ -105,7 +106,7 @@ class _RepeatSampler:
             yield from iter(self.sampler)
 
 
-def seed_worker(worker_id: int):  # noqa
+def seed_worker(worker_id: int):
     """Set dataloader worker seed for reproducibility across worker processes."""
     worker_seed = torch.initial_seed() % 2**32
     np.random.seed(worker_seed)
@@ -116,7 +117,7 @@ def build_yolo_dataset(
     cfg: IterableSimpleNamespace,
     img_path: str,
     batch: int,
-    data: Dict[str, Any],
+    data: dict[str, Any],
     mode: str = "train",
     rect: bool = False,
     stride: int = 32,

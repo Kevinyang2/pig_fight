@@ -1,7 +1,7 @@
 # Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 """Block modules."""
 
-from typing import List, Optional, Tuple
+from __future__ import annotations
 
 import torch
 import torch.nn as nn
@@ -13,43 +13,43 @@ from .conv import Conv, DWConv, GhostConv, LightConv, RepConv, autopad
 from .transformer import TransformerBlock
 
 __all__ = (
-    "DFL",
-    "HGBlock",
-    "HGStem",
-    "SPP",
-    "SPPF",
     "C1",
     "C2",
+    "C2PSA",
     "C3",
-    "C2f",
-    "C2fAttn",
-    "ImagePoolingAttn",
-    "ContrastiveHead",
-    "BNContrastiveHead",
-    "C3x",
     "C3TR",
-    "C3Ghost",
-    "GhostBottleneck",
+    "CIB",
+    "DFL",
+    "ELAN1",
+    "PSA",
+    "SPP",
+    "SPPELAN",
+    "SPPF",
+    "AConv",
+    "ADown",
+    "Attention",
+    "BNContrastiveHead",
     "Bottleneck",
     "BottleneckCSP",
-    "Proto",
-    "RepC3",
-    "ResNetLayer",
-    "RepNCSPELAN4",
-    "ELAN1",
-    "ADown",
-    "AConv",
-    "SPPELAN",
+    "C2f",
+    "C2fAttn",
+    "C2fCIB",
+    "C2fPSA",
+    "C3Ghost",
+    "C3k2",
+    "C3x",
     "CBFuse",
     "CBLinear",
-    "C3k2",
-    "C2fPSA",
-    "C2PSA",
+    "ContrastiveHead",
+    "GhostBottleneck",
+    "HGBlock",
+    "HGStem",
+    "ImagePoolingAttn",
+    "Proto",
+    "RepC3",
+    "RepNCSPELAN4",
     "RepVGGDW",
-    "CIB",
-    "C2fCIB",
-    "Attention",
-    "PSA",
+    "ResNetLayer",
     "SCDown",
     "TorchVision",
 )
@@ -103,31 +103,36 @@ class Proto(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Perform a forward pass through layers using an upsampled input image."""
         return self.cv3(self.cv2(self.upsample(self.cv1(x))))
-import numpy as np
-from typing import Union, Sequence, Tuple, Optional
-import torch
-from torch import nn, Tensor
-import torch.nn.functional as F
+
+
+from collections.abc import Sequence
 from typing import Any, Callable
+
+import numpy as np
+from torch import Tensor, nn
 from torchvision.ops import StochasticDepth as StochasticDepthTorch
 
+
 class Dropout(nn.Dropout):
-    def __init__(self, p: float=0.5, inplace: bool=False):
-        super(Dropout, self).__init__(p=p, inplace=inplace)
+    def __init__(self, p: float = 0.5, inplace: bool = False):
+        super().__init__(p=p, inplace=inplace)
+
 
 class StochasticDepth(StochasticDepthTorch):
-    def __init__(self, p: float, Mode: str="row") -> None:
+    def __init__(self, p: float, Mode: str = "row") -> None:
         super().__init__(p, Mode)
+
 
 def pair(Val):
     return Val if isinstance(Val, (tuple, list)) else (Val, Val)
 
-def makeDivisible(v: float, divisor: int, min_value: Optional[int] = None) -> int:
+
+def makeDivisible(v: float, divisor: int, min_value: int | None = None) -> int:
     """
     This function is taken from the original tf repo.
     It ensures that all layers have a channel number that is divisible by 8
     It can be seen here:
-    https://github.com/tensorflow/models/blob/master/research/slim/nets/mobilenet/mobilenet.Py
+    https://github.com/tensorflow/models/blob/master/research/slim/nets/mobilenet/mobilenet.Py.
     """
     if min_value is None:
         min_value = divisor
@@ -136,6 +141,7 @@ def makeDivisible(v: float, divisor: int, min_value: Optional[int] = None) -> in
     if new_v < 0.9 * v:
         new_v += divisor
     return new_v
+
 
 class LinearSelfAttention(nn.Module):
     """
@@ -164,8 +170,8 @@ class LinearSelfAttention(nn.Module):
     def __init__(
         self,
         DimEmbed: int,
-        AttnDropRate: Optional[float]=0.0,
-        Bias: Optional[bool]=True,
+        AttnDropRate: float | None = 0.0,
+        Bias: bool | None = True,
     ) -> None:
         super().__init__()
 
@@ -182,9 +188,7 @@ class LinearSelfAttention(nn.Module):
         # Project x into query, key and value
         # Query --> [B, 1, P, N]
         # value, key --> [B, d, P, N]
-        query, key, value = torch.split(
-            qkv, split_size_or_sections=[1, self.DimEmbed, self.DimEmbed], dim=1
-        )
+        query, key, value = torch.split(qkv, split_size_or_sections=[1, self.DimEmbed, self.DimEmbed], dim=1)
 
         # apply softmax along N dimension
         context_scores = F.softmax(query, dim=-1)
@@ -204,14 +208,15 @@ class LinearSelfAttention(nn.Module):
         out = self.out_proj(out)
         return out
 
+
 class LinearAttnFFN(nn.Module):
     def __init__(
-            self,
-            DimEmbed: int,
-            DimFfnLatent: int,
-            AttnDropRate: Optional[float] = 0.0,
-            DropRate: Optional[float] = 0.1,
-            FfnDropRate: Optional[float] = 0.0,
+        self,
+        DimEmbed: int,
+        DimFfnLatent: int,
+        AttnDropRate: float | None = 0.0,
+        DropRate: float | None = 0.1,
+        FfnDropRate: float | None = 0.0,
     ) -> None:
         super().__init__()
         AttnUnit = LinearSelfAttention(DimEmbed, AttnDropRate, Bias=True)
@@ -240,24 +245,25 @@ class LinearAttnFFN(nn.Module):
         x = x + self.PreNormFfn(x)
         return x
 
+
 class BaseConv2d(nn.Module):
     def __init__(
-            self,
-            in_channels: int,
-            out_channels: int,
-            kernel_size: int,
-            stride: Optional[int] = 1,
-            padding: Optional[int] = None,
-            groups: Optional[int] = 1,
-            bias: Optional[bool] = None,
-            BNorm: bool = False,
-            # norm_layer: Optional[Callable[..., nn.Module]]=nn.BatchNorm2d,
-            ActLayer: Optional[Callable[..., nn.Module]] = None,
-            dilation: int = 1,
-            Momentum: Optional[float] = 0.1,
-            **kwargs: Any
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: int,
+        stride: int | None = 1,
+        padding: int | None = None,
+        groups: int | None = 1,
+        bias: bool | None = None,
+        BNorm: bool = False,
+        # norm_layer: Optional[Callable[..., nn.Module]]=nn.BatchNorm2d,
+        ActLayer: Callable[..., nn.Module] | None = None,
+        dilation: int = 1,
+        Momentum: float | None = 0.1,
+        **kwargs: Any,
     ) -> None:
-        super(BaseConv2d, self).__init__()
+        super().__init__()
         if padding is None:
             padding = int((kernel_size - 1) // 2 * dilation)
 
@@ -272,13 +278,12 @@ class BaseConv2d(nn.Module):
         self.groups = groups
         self.bias = bias
 
-        self.Conv = nn.Conv2d(in_channels, out_channels,
-                              kernel_size, stride, padding, dilation, groups, bias, **kwargs)
+        self.Conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias, **kwargs)
 
         self.Bn = nn.BatchNorm2d(out_channels, eps=0.001, momentum=Momentum) if BNorm else nn.Identity()
 
         if ActLayer is not None:
-            if isinstance(list(ActLayer().named_modules())[0][1], nn.Sigmoid):
+            if isinstance(next(iter(ActLayer().named_modules()))[1], nn.Sigmoid):
                 self.Act = ActLayer()
             else:
                 self.Act = ActLayer(inplace=True)
@@ -292,35 +297,46 @@ class BaseConv2d(nn.Module):
             x = self.Act(x)
         return x
 
+
 class BaseFormer(nn.Module):
     def __init__(
-            self,
-            InChannels: int,
-            FfnMultiplier: Optional[Union[Sequence[Union[int, float]], int, float]] = 2.0,
-            NumAttnBlocks: Optional[int] = 2,
-            AttnDropRate: Optional[float] = 0.0,
-            DropRate: Optional[float] = 0.0,
-            FfnDropRate: Optional[float] = 0.0,
-            PatchRes: Optional[int] = 2,
-            Dilation: Optional[int] = 1,
-            ViTSELayer: Optional[nn.Module] = None,
-            **kwargs: Any,
+        self,
+        InChannels: int,
+        FfnMultiplier: Sequence[int | float] | int | float | None = 2.0,
+        NumAttnBlocks: int | None = 2,
+        AttnDropRate: float | None = 0.0,
+        DropRate: float | None = 0.0,
+        FfnDropRate: float | None = 0.0,
+        PatchRes: int | None = 2,
+        Dilation: int | None = 1,
+        ViTSELayer: nn.Module | None = None,
+        **kwargs: Any,
     ) -> None:
         DimAttnUnit = InChannels // 2
         DimCNNOut = DimAttnUnit
 
         Conv3x3In = BaseConv2d(
-            InChannels, InChannels, 3, 1, dilation=Dilation,
-            BNorm=True, ActLayer=nn.SiLU,
+            InChannels,
+            InChannels,
+            3,
+            1,
+            dilation=Dilation,
+            BNorm=True,
+            ActLayer=nn.SiLU,
         )  # depth-wise separable convolution
         ViTSELayer = ViTSELayer(InChannels, **kwargs) if ViTSELayer is not None else nn.Identity()
         Conv1x1In = BaseConv2d(InChannels, DimCNNOut, 1, 1, bias=False)
 
-        super(BaseFormer, self).__init__()
+        super().__init__()
         self.LocalRep = nn.Sequential(Conv3x3In, ViTSELayer, Conv1x1In)
 
         self.GlobalRep, DimAttnUnit = self.buildAttnLayer(
-            DimAttnUnit, FfnMultiplier, NumAttnBlocks, AttnDropRate, DropRate, FfnDropRate,
+            DimAttnUnit,
+            FfnMultiplier,
+            NumAttnBlocks,
+            AttnDropRate,
+            DropRate,
+            FfnDropRate,
         )
         self.ConvProj = BaseConv2d(DimCNNOut, InChannels, 1, 1, BNorm=True)
 
@@ -330,19 +346,16 @@ class BaseFormer(nn.Module):
         self.PatchArea = self.WPatch * self.HPatch
 
     def buildAttnLayer(
-            self,
-            DimModel: int,
-            FfnMult: Union[Sequence, int, float],
-            NumAttnBlocks: int,
-            AttnDropRate: float,
-            DropRate: float,
-            FfnDropRate: float,
-    ) -> Tuple[nn.Module, int]:
-
+        self,
+        DimModel: int,
+        FfnMult: Sequence | int | float,
+        NumAttnBlocks: int,
+        AttnDropRate: float,
+        DropRate: float,
+        FfnDropRate: float,
+    ) -> tuple[nn.Module, int]:
         if isinstance(FfnMult, Sequence) and len(FfnMult) == 2:
-            DimFfn = (
-                    np.linspace(FfnMult[0], FfnMult[1], NumAttnBlocks, dtype=float) * DimModel
-            )
+            DimFfn = np.linspace(FfnMult[0], FfnMult[1], NumAttnBlocks, dtype=float) * DimModel
         elif isinstance(FfnMult, Sequence) and len(FfnMult) == 1:
             DimFfn = [FfnMult[0] * DimModel] * NumAttnBlocks
         elif isinstance(FfnMult, (int, float)):
@@ -360,7 +373,7 @@ class BaseFormer(nn.Module):
         GlobalRep.append(nn.BatchNorm2d(DimModel))
         return nn.Sequential(*GlobalRep), DimModel
 
-    def unfolding(self, FeatureMap: Tensor) -> Tuple[Tensor, Tuple[int, int]]:
+    def unfolding(self, FeatureMap: Tensor) -> tuple[Tensor, tuple[int, int]]:
         B, C, H, W = FeatureMap.shape
 
         # [B, C, H, W] --> [B, C, P, N]
@@ -369,13 +382,11 @@ class BaseFormer(nn.Module):
             kernel_size=(self.HPatch, self.WPatch),
             stride=(self.HPatch, self.WPatch),
         )
-        Patches = Patches.reshape(
-            B, C, self.HPatch * self.WPatch, -1
-        )
+        Patches = Patches.reshape(B, C, self.HPatch * self.WPatch, -1)
 
         return Patches, (H, W)
 
-    def folding(self, Patches: Tensor, OutputSize: Tuple[int, int]) -> Tensor:
+    def folding(self, Patches: Tensor, OutputSize: tuple[int, int]) -> Tensor:
         B, C, P, N = Patches.shape  # BatchSize, DimIn, PatchSize, NumPatches
 
         # [B, C, P, N]
@@ -416,29 +427,40 @@ class BaseFormer(nn.Module):
 
         return Fm
 
-#AssemFormer, a method that combines convolution with a vision transformer by assembling tensors.
+
+# AssemFormer, a method that combines convolution with a vision transformer by assembling tensors.
 class AssemFormer(BaseFormer):
     """
     Inspired by MobileViTv3.
-    Adapted from https://github.com/micronDLA/MobileViTv3/blob/main/MobileViTv3-v2/cvnets/modules/mobilevit_block.py
+    Adapted from https://github.com/micronDLA/MobileViTv3/blob/main/MobileViTv3-v2/cvnets/modules/mobilevit_block.py.
     """
 
     def __init__(
-            self,
-            InChannels: int,
-            FfnMultiplier: Optional[Union[Sequence[Union[int, float]], int, float]] = 2.0,
-            NumAttnBlocks: Optional[int] = 2,
-            AttnDropRate: Optional[float] = 0.0,
-            DropRate: Optional[float] = 0.0,
-            FfnDropRate: Optional[float] = 0.0,
-            PatchRes: Optional[int] = 2,
-            Dilation: Optional[int] = 1,
-            SDProb: Optional[float] = 0.0,
-            ViTSELayer: Optional[nn.Module] = None,
-            **kwargs: Any,
+        self,
+        InChannels: int,
+        FfnMultiplier: Sequence[int | float] | int | float | None = 2.0,
+        NumAttnBlocks: int | None = 2,
+        AttnDropRate: float | None = 0.0,
+        DropRate: float | None = 0.0,
+        FfnDropRate: float | None = 0.0,
+        PatchRes: int | None = 2,
+        Dilation: int | None = 1,
+        SDProb: float | None = 0.0,
+        ViTSELayer: nn.Module | None = None,
+        **kwargs: Any,
     ) -> None:
-        super().__init__(InChannels, FfnMultiplier, NumAttnBlocks, AttnDropRate,
-                         DropRate, FfnDropRate, PatchRes, Dilation, ViTSELayer, **kwargs)
+        super().__init__(
+            InChannels,
+            FfnMultiplier,
+            NumAttnBlocks,
+            AttnDropRate,
+            DropRate,
+            FfnDropRate,
+            PatchRes,
+            Dilation,
+            ViTSELayer,
+            **kwargs,
+        )
         # AssembleFormer: input changed from just global to local + global
         self.ConvProj = BaseConv2d(2 * self.DimCNNOut, InChannels, 1, 1, BNorm=True)
 
@@ -461,6 +483,7 @@ class AssemFormer(BaseFormer):
 
         # AssembleFormer: skip connection
         return x + self.Dropout(Fm)
+
 
 class C2f_AssemFormer(nn.Module):
     """Faster Implementation of CSP Bottleneck with 2 convolutions."""
@@ -488,6 +511,7 @@ class C2f_AssemFormer(nn.Module):
         y.extend(m(y[-1]) for m in self.m)
         return self.att(self.cv2(torch.cat(y, 1)))
 
+
 class C3k2_AssemFormer(C2f_AssemFormer):
     """Faster Implementation of CSP Bottleneck with 2 convolutions."""
 
@@ -497,6 +521,7 @@ class C3k2_AssemFormer(C2f_AssemFormer):
         self.m = nn.ModuleList(
             C3k(self.c, self.c, 2, shortcut, g) if c3k else Bottleneck(self.c, self.c, shortcut, g) for _ in range(n)
         )
+
 
 class HGStem(nn.Module):
     """
@@ -585,7 +610,7 @@ class HGBlock(nn.Module):
 class SPP(nn.Module):
     """Spatial Pyramid Pooling (SPP) layer https://arxiv.org/abs/1406.4729."""
 
-    def __init__(self, c1: int, c2: int, k: Tuple[int, ...] = (5, 9, 13)):
+    def __init__(self, c1: int, c2: int, k: tuple[int, ...] = (5, 9, 13)):
         """
         Initialize the SPP layer with input/output channels and pooling kernel sizes.
 
@@ -864,7 +889,7 @@ class Bottleneck(nn.Module):
     """Standard bottleneck."""
 
     def __init__(
-        self, c1: int, c2: int, shortcut: bool = True, g: int = 1, k: Tuple[int, int] = (3, 3), e: float = 0.5
+        self, c1: int, c2: int, shortcut: bool = True, g: int = 1, k: tuple[int, int] = (3, 3), e: float = 0.5
     ):
         """
         Initialize a standard bottleneck module.
@@ -1104,7 +1129,7 @@ class ImagePoolingAttn(nn.Module):
     """ImagePoolingAttn: Enhance the text embeddings with image-aware information."""
 
     def __init__(
-        self, ec: int = 256, ch: Tuple[int, ...] = (), ct: int = 512, nh: int = 8, k: int = 3, scale: bool = False
+        self, ec: int = 256, ch: tuple[int, ...] = (), ct: int = 512, nh: int = 8, k: int = 3, scale: bool = False
     ):
         """
         Initialize ImagePoolingAttn module.
@@ -1133,7 +1158,7 @@ class ImagePoolingAttn(nn.Module):
         self.hc = ec // nh
         self.k = k
 
-    def forward(self, x: List[torch.Tensor], text: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: list[torch.Tensor], text: torch.Tensor) -> torch.Tensor:
         """
         Forward pass of ImagePoolingAttn.
 
@@ -1249,7 +1274,7 @@ class RepBottleneck(Bottleneck):
     """Rep bottleneck."""
 
     def __init__(
-        self, c1: int, c2: int, shortcut: bool = True, g: int = 1, k: Tuple[int, int] = (3, 3), e: float = 0.5
+        self, c1: int, c2: int, shortcut: bool = True, g: int = 1, k: tuple[int, int] = (3, 3), e: float = 0.5
     ):
         """
         Initialize RepBottleneck.
@@ -1419,7 +1444,7 @@ class SPPELAN(nn.Module):
 class CBLinear(nn.Module):
     """CBLinear."""
 
-    def __init__(self, c1: int, c2s: List[int], k: int = 1, s: int = 1, p: Optional[int] = None, g: int = 1):
+    def __init__(self, c1: int, c2s: list[int], k: int = 1, s: int = 1, p: int | None = None, g: int = 1):
         """
         Initialize CBLinear module.
 
@@ -1435,7 +1460,7 @@ class CBLinear(nn.Module):
         self.c2s = c2s
         self.conv = nn.Conv2d(c1, sum(c2s), k, s, autopad(k, p), groups=g, bias=True)
 
-    def forward(self, x: torch.Tensor) -> List[torch.Tensor]:
+    def forward(self, x: torch.Tensor) -> list[torch.Tensor]:
         """Forward pass through CBLinear layer."""
         return self.conv(x).split(self.c2s, dim=1)
 
@@ -1443,7 +1468,7 @@ class CBLinear(nn.Module):
 class CBFuse(nn.Module):
     """CBFuse."""
 
-    def __init__(self, idx: List[int]):
+    def __init__(self, idx: list[int]):
         """
         Initialize CBFuse module.
 
@@ -1453,7 +1478,7 @@ class CBFuse(nn.Module):
         super().__init__()
         self.idx = idx
 
-    def forward(self, xs: List[torch.Tensor]) -> torch.Tensor:
+    def forward(self, xs: list[torch.Tensor]) -> torch.Tensor:
         """
         Forward pass through CBFuse layer.
 
@@ -2367,7 +2392,7 @@ class Residual(nn.Module):
 class SAVPE(nn.Module):
     """Spatial-Aware Visual Prompt Embedding module for feature enhancement."""
 
-    def __init__(self, ch: List[int], c3: int, embed: int):
+    def __init__(self, ch: list[int], c3: int, embed: int):
         """
         Initialize SAVPE module with channels, intermediate channels, and embedding dimension.
 
@@ -2395,7 +2420,7 @@ class SAVPE(nn.Module):
         self.cv5 = nn.Conv2d(1, self.c, 3, padding=1)
         self.cv6 = nn.Sequential(Conv(2 * self.c, self.c, 3), nn.Conv2d(self.c, self.c, 3, padding=1))
 
-    def forward(self, x: List[torch.Tensor], vp: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: list[torch.Tensor], vp: torch.Tensor) -> torch.Tensor:
         """Process input features and visual prompts to generate enhanced embeddings."""
         y = [self.cv2[i](xi) for i, xi in enumerate(x)]
         y = self.cv4(torch.cat(y, dim=1))

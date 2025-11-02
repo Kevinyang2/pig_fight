@@ -1,16 +1,17 @@
 import torch
-from torch import nn
 import torch.nn.functional as F
+from torch import nn
 
 
 class CPCA_ChannelAttention(nn.Module):
-
     def __init__(self, input_channels, internal_neurons):
-        super(CPCA_ChannelAttention, self).__init__()
-        self.fc1 = nn.Conv2d(in_channels=input_channels, out_channels=internal_neurons, kernel_size=1, stride=1,
-                             bias=True)
-        self.fc2 = nn.Conv2d(in_channels=internal_neurons, out_channels=input_channels, kernel_size=1, stride=1,
-                             bias=True)
+        super().__init__()
+        self.fc1 = nn.Conv2d(
+            in_channels=input_channels, out_channels=internal_neurons, kernel_size=1, stride=1, bias=True
+        )
+        self.fc2 = nn.Conv2d(
+            in_channels=internal_neurons, out_channels=input_channels, kernel_size=1, stride=1, bias=True
+        )
         self.input_channels = input_channels
 
     def forward(self, inputs):
@@ -177,4 +178,3 @@ class C3k2_CPCA(C2f_CPCA):
         self.m = nn.ModuleList(
             C3k(self.c, self.c, 2, shortcut, g) if c3k else Bottleneck(self.c, self.c, shortcut, g) for _ in range(n)
         )
-

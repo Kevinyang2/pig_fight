@@ -4,13 +4,13 @@ import torch.nn as nn
 
 class SimAM(torch.nn.Module):
     def __init__(self, channels=None, out_channels=None, e_lambda=1e-4):
-        super(SimAM, self).__init__()
+        super().__init__()
         self.activaton = nn.Sigmoid()
         self.e_lambda = e_lambda
 
     def __repr__(self):
-        s = self.__class__.__name__ + '('
-        s += ('lambda=%f)' % self.e_lambda)
+        s = self.__class__.__name__ + "("
+        s += f"lambda={self.e_lambda:f})"
         return s
 
     @staticmethod
@@ -18,7 +18,7 @@ class SimAM(torch.nn.Module):
         return "simam"
 
     def forward(self, x):
-        b, c, h, w = x.size()
+        _b, _c, h, w = x.size()
         n = w * h - 1
         x_minus_mu_square = (x - x.mean(dim=[2, 3], keepdim=True)).pow(2)
         y = x_minus_mu_square / (4 * (x_minus_mu_square.sum(dim=[2, 3], keepdim=True) / n + self.e_lambda)) + 0.5
@@ -102,7 +102,7 @@ class C3k(C3):
 
 class A2C2f_SimAM(nn.Module):
     """
-    A2C2f module with residual enhanced feature extraction using ABlock blocks with area-attention. Also known as R-ELAN
+    A2C2f module with residual enhanced feature extraction using ABlock blocks with area-attention. Also known as R-ELAN.
 
     This class extends the C2f module by incorporating ABlock blocks for fast attention mechanisms and feature extraction.
 
@@ -136,13 +136,13 @@ class A2C2f_SimAM(nn.Module):
         assert c_ % 32 == 0, "Dimension of ABlock be a multiple of 32."
 
         # num_heads = c_ // 64 if c_ // 64 >= 2 else c_ // 32
-        num_heads = c_ // 32
+        c_ // 32
 
         self.cv1 = Conv(c1, c_, 1, 1)
         self.cv2 = Conv((1 + n) * c_, c2, 1)  # optional act=FReLU(c2)
 
         init_values = 0.01  # or smaller
-        self.gamma = nn.Parameter(init_values * torch.ones((c2)), requires_grad=True) if a2 and residual else None
+        self.gamma = nn.Parameter(init_values * torch.ones(c2), requires_grad=True) if a2 and residual else None
 
         self.m = nn.ModuleList(
             nn.Sequential(*(SimAM(c1, c2) for _ in range(2))) if a2 else C3k(c_, c_, 2, shortcut, g) for _ in range(n)
@@ -155,4 +155,3 @@ class A2C2f_SimAM(nn.Module):
         if self.gamma is not None:
             return x + (self.gamma * self.cv2(torch.cat(y, 1)).permute(0, 2, 3, 1)).permute(0, 3, 1, 2)
         return self.cv2(torch.cat(y, 1))
-
