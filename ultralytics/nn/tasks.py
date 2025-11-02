@@ -4,6 +4,7 @@ import contextlib
 import pickle
 import re
 import types
+from .Extramodule import *
 from copy import deepcopy
 from pathlib import Path
 
@@ -68,6 +69,8 @@ from ultralytics.nn.modules import (
     YOLOEDetect,
     YOLOESegment,
     v10Detect,
+    C3k2_AssemFormer,
+    C2f_AssemFormer,
 )
 from ultralytics.utils import DEFAULT_CFG_DICT, DEFAULT_CFG_KEYS, LOGGER, YAML, colorstr, emojis
 from ultralytics.utils.checks import check_requirements, check_suffix, check_yaml
@@ -157,35 +160,60 @@ class BaseModel(torch.nn.Module):
         return self._predict_once(x, profile, visualize, embed)
 
     def _predict_once(self, x, profile=False, visualize=False, embed=None):
-        """
-        Perform a forward pass through the network.
-
-        Args:
-            x (torch.Tensor): The input tensor to the model.
-            profile (bool): Print the computation time of each layer if True.
-            visualize (bool): Save the feature maps of the model if True.
-            embed (list, optional): A list of feature vectors/embeddings to return.
-
-        Returns:
-            (torch.Tensor): The last output of the model.
-        """
         y, dt, embeddings = [], [], []  # outputs
-        embed = frozenset(embed) if embed is not None else {-1}
-        max_idx = max(embed)
+        # If model expects 3T-channels but single 3-channel tensor is given (predict path), replicate to match
+        try:
+            if isinstance(x, torch.Tensor):
+                c_in = x.shape[1]
+                expected_c = None
+                # Prefer explicit attribute if present
+                if hasattr(self, "ch"):
+                    expected_c = int(self.ch)
+                # Fallback: infer from first layer
+                if expected_c is None or expected_c <= 0:
+                    try:
+                        m0 = self.model[0]
+                        if hasattr(m0, "conv") and hasattr(m0.conv, "in_channels"):
+                            expected_c = int(m0.conv.in_channels)
+                    except Exception:
+                        expected_c = None
+                if expected_c and c_in == 3 and expected_c % 3 == 0 and expected_c != 3:
+                    reps = expected_c // 3
+                    x = x.repeat(1, reps, 1, 1)
+        except Exception:
+            pass
         for m in self.model:
             if m.f != -1:  # if not from previous layer
-                x = y[m.f] if isinstance(m.f, int) else [x if j == -1 else y[j] for j in m.f]  # from earlier layers
+                x = (
+                    y[m.f]
+                    if isinstance(m.f, int)
+                    else [x if j == -1 else y[j] for j in m.f]
+                )  # from earlier layers
             if profile:
                 self._profile_one_layer(m, x, dt)
-            x = m(x)  # run
-            y.append(x if m.i in self.save else None)  # save output
+            if hasattr(m, "backbone"):
+                x = m(x)
+                for _ in range(5 - len(x)):
+                    x.insert(0, None)
+                for i_idx, i in enumerate(x):
+                    if i_idx in self.save:
+                        y.append(i)
+                    else:
+                        y.append(None)
+                x = x[-1]
+            else:
+                x = m(x)  # run
+                y.append(x if m.i in self.save else None)  # save output
             if visualize:
                 feature_visualization(x, m.type, m.i, save_dir=visualize)
-            if m.i in embed:
-                embeddings.append(torch.nn.functional.adaptive_avg_pool2d(x, (1, 1)).squeeze(-1).squeeze(-1))  # flatten
-                if m.i == max_idx:
+            if embed and m.i in embed:
+                embeddings.append(
+                    nn.functional.adaptive_avg_pool2d(x, (1, 1)).squeeze(-1).squeeze(-1)
+                )  # flatten
+                if m.i == max(embed):
                     return torch.unbind(torch.cat(embeddings, 1), dim=0)
         return x
+
 
     def _predict_augment(self, x):
         """Perform augmentations on input image x and return augmented inference."""
@@ -292,7 +320,7 @@ class BaseModel(torch.nn.Module):
         self = super()._apply(fn)
         m = self.model[-1]  # Detect()
         if isinstance(
-            m, Detect
+            m, (Detect,DetectDAD)
         ):  # includes all Detect subclasses like Segment, Pose, OBB, WorldDetect, YOLOEDetect, YOLOESegment
             m.stride = fn(m.stride)
             m.anchors = fn(m.anchors)
@@ -393,6 +421,8 @@ class DetectionModel(BaseModel):
             self.yaml["backbone"][0][2] = "nn.Identity"
 
         # Define model
+        # Prefer YAML-defined input channels if provided (enables multi-frame 3T-channel inputs)
+        ch = self.yaml.get("channels", ch)
         self.yaml["channels"] = ch  # save channels
         if nc and nc != self.yaml["nc"]:
             LOGGER.info(f"Overriding model.yaml nc={self.yaml['nc']} with nc={nc}")
@@ -401,10 +431,12 @@ class DetectionModel(BaseModel):
         self.names = {i: f"{i}" for i in range(self.yaml["nc"])}  # default names dict
         self.inplace = self.yaml.get("inplace", True)
         self.end2end = getattr(self.model[-1], "end2end", False)
+        # Expose expected input channels for downstream logic (predictor warmup, dataloaders)
+        self.ch = ch
 
         # Build strides
         m = self.model[-1]  # Detect()
-        if isinstance(m, Detect):  # includes all Detect subclasses like Segment, Pose, OBB, YOLOEDetect, YOLOESegment
+        if isinstance(m, (Detect,DetectDAD)):  # includes all Detect subclasses like Segment, Pose, OBB, YOLOEDetect, YOLOESegment
             s = 256  # 2x min stride
             m.inplace = self.inplace
 
@@ -416,7 +448,16 @@ class DetectionModel(BaseModel):
 
             self.model.eval()  # Avoid changing batch statistics until training begins
             m.training = True  # Setting it to True to properly return strides
-            m.stride = torch.tensor([s / x.shape[-2] for x in _forward(torch.zeros(1, ch, s, s))])  # forward
+            # m.stride = torch.tensor([s / x.shape[-2] for x in _forward(torch.zeros(1, ch, s, s))])  # forward
+            try:
+                m.stride = torch.tensor([s / x.shape[-2] for x in _forward(torch.zeros(1, ch, s, s))])  # forward on CPU
+            except RuntimeError:
+                try:
+                    self.model.to(torch.device('cuda'))
+                    m.stride = torch.tensor([s / x.shape[-2] for x in _forward(
+                        torch.zeros(1, ch, s, s).to(torch.device('cuda')))])  # forward on CUDA
+                except RuntimeError as error:
+                    raise error
             self.stride = m.stride
             self.model.train()  # Set model back to training(default) mode
             m.bias_init()  # only run once
@@ -1608,6 +1649,9 @@ def parse_model(d, ch, verbose=True):
         LOGGER.info(f"\n{'':>3}{'from':>20}{'n':>3}{'params':>10}  {'module':<45}{'arguments':<30}")
     ch = [ch]
     layers, save, c2 = [], [], ch[-1]  # layers, savelist, ch out
+
+    backbone = False  #add
+
     base_modules = frozenset(
         {
             Classify,
@@ -1644,6 +1688,28 @@ def parse_model(d, ch, verbose=True):
             SCDown,
             C2fCIB,
             A2C2f,
+            SimAM,
+            A2C2f_SimAM,
+            Pzconv,
+            FCM_3,
+            FCM_2,
+            FCM_1,
+            FCM,
+            Down,
+            C3k2_FCM,
+            PConv,
+            C3k2_APConv,
+            C2f_CPCA,
+            MoCAttention,
+            C2f_MCAttn,
+            SPPELAN,
+            PPA,
+            A2C2f_PPA,
+            nn.Conv2d,
+            C3k2_AssemFormer,
+            C2fCIB_AssemFormer,
+            AIFI,
+            C2f_AssemFormer
         }
     )
     repeat_modules = frozenset(  # modules with 'repeat' arguments
@@ -1666,6 +1732,8 @@ def parse_model(d, ch, verbose=True):
         }
     )
     for i, (f, n, m, args) in enumerate(d["backbone"] + d["head"]):  # from, number, module, args
+        t = m   #add
+
         m = (
             getattr(torch.nn, m[3:])
             if "nn." in m
@@ -1702,12 +1770,50 @@ def parse_model(d, ch, verbose=True):
                 legacy = False
         elif m is AIFI:
             args = [ch[f], *args]
+        elif m in {WFU}:
+            c1 = [ch[x] for x in f]
+            c2 = c1[0]
+            args = [c1]
+        elif m is ChannelAttention_HSFPN:
+            c2 = ch[f]
+            args = [c2, *args]
+        elif m is Multiply:
+            c2 = ch[f[0]] if isinstance(f, list) else ch[f]
+        elif m is Add:
+            c2 = ch[f[-1]] if isinstance(f, list) else ch[f]
+        elif m is ChannelAttention_HSFPN:
+            c2 = ch[f]
+            args = [c2, *args]
+        elif m is Multiply:
+            c2 = ch[f[0]]
+        elif m is Add:
+            c2 = ch[f[-1]]
+        elif m in {SwinTransformer}:
+            m = m()
+            c2 = m.width_list
+            backbone = True
+        elif m in {CBAM, ECA, GAM, CPCA, ChannelAttention_HSFPN}:
+            c2 = ch[f]
+            args = [c2, *args]
+        elif m in {Multiply, Add}:
+            # element-wise ops; support multi-input from list f
+            if isinstance(f, list) and len(f) >= 1:
+                c2 = ch[f[0]]
+            else:
+                c2 = ch[f]
+        elif m in (EfficientViT_M0, EfficientViT_M1, EfficientViT_M2, EfficientViT_M3, EfficientViT_M4,
+                   EfficientViT_M5,):
+            m = m(*args)
+            c2 = m.channel
         elif m in frozenset({HGStem, HGBlock}):
             c1, cm, c2 = ch[f], args[0], args[1]
             args = [c1, cm, c2, *args[2:]]
             if m is HGBlock:
                 args.insert(4, n)  # number of repeats
                 n = 1
+        elif m in {FreqFusion}:
+            c2 = ch[f[0]]
+            args = [[ch[x] for x in f], *args]
         elif m is ResNetLayer:
             c2 = args[1] if args[3] else args[1] * 4
         elif m is torch.nn.BatchNorm2d:
@@ -1715,7 +1821,7 @@ def parse_model(d, ch, verbose=True):
         elif m is Concat:
             c2 = sum(ch[x] for x in f)
         elif m in frozenset(
-            {Detect, WorldDetect, YOLOEDetect, Segment, YOLOESegment, Pose, OBB, ImagePoolingAttn, v10Detect}
+            {Detect, WorldDetect, YOLOEDetect, Segment, YOLOESegment, Pose, OBB, ImagePoolingAttn, v10Detect,DetectDAD}
         ):
             args.append([ch[x] for x in f])
             if m is Segment or m is YOLOESegment:
@@ -1730,6 +1836,12 @@ def parse_model(d, ch, verbose=True):
             args = [c1, c2, *args[1:]]
         elif m is CBFuse:
             c2 = ch[f[-1]]
+        elif m in {MFM}:
+            if args[0] == 'head_channel':
+                args[0] = d[args[0]]
+            c1 = [ch[x] for x in f]
+            c2 = make_divisible(min(args[0], max_channels) * width, 8)
+            args = [c1, c2, *args[1:]]
         elif m in frozenset({TorchVision, Index}):
             c2 = args[0]
             c1 = ch[f]
@@ -1737,17 +1849,30 @@ def parse_model(d, ch, verbose=True):
         else:
             c2 = ch[f]
 
-        m_ = torch.nn.Sequential(*(m(*args) for _ in range(n))) if n > 1 else m(*args)  # module
-        t = str(m)[8:-2].replace("__main__.", "")  # module type
+        if isinstance(c2, list):
+            backbone = True
+            m_ = m
+            m_.backbone = True
+        else:
+            m_ = nn.Sequential(*(m(*args) for _ in range(n))) if n > 1 else m(*args)  # module
+            t = str(m)[8:-2].replace('__main__.', '')  # module type
         m_.np = sum(x.numel() for x in m_.parameters())  # number params
-        m_.i, m_.f, m_.type = i, f, t  # attach index, 'from' index, type
+        m_.i, m_.f, m_.type = i + 4 if backbone else i, f, t  # attach index, 'from' index, type
         if verbose:
-            LOGGER.info(f"{i:>3}{str(f):>20}{n_:>3}{m_.np:10.0f}  {t:<45}{str(args):<30}")  # print
-        save.extend(x % i for x in ([f] if isinstance(f, int) else f) if x != -1)  # append to savelist
+            np_val = getattr(m_, 'np', 0)
+            LOGGER.info(f'{i:>3}{str(f):>20}{n_:>3}{np_val:10.0f}  {t:<45}{str(args):<30}')  # print
+        save.extend(x % (i + 4 if backbone else i) for x in ([f] if isinstance(f, int) else f) if
+                    x != -1)  # append to savelist
         layers.append(m_)
         if i == 0:
             ch = []
-        ch.append(c2)
+        if isinstance(c2, list):
+            ch.extend(c2)
+            for _ in range(5 - len(ch)):
+                ch.insert(0, 0)
+        else:
+            ch.append(c2)
+
     return torch.nn.Sequential(*layers), sorted(save)
 
 
@@ -1837,7 +1962,7 @@ def guess_model_task(model):
                 return "pose"
             elif isinstance(m, OBB):
                 return "obb"
-            elif isinstance(m, (Detect, WorldDetect, YOLOEDetect, v10Detect)):
+            elif isinstance(m, (Detect, WorldDetect, YOLOEDetect, v10Detect,DetectDAD)):
                 return "detect"
 
     # Guess from model filename

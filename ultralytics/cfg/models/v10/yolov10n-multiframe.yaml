@@ -1,0 +1,50 @@
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
+# YOLOv10n multi-frame (stacked) input example with P3/8 - P5/32 outputs
+# This YAML sets input channels to 12 (T=4 frames -> 3T channels),
+# keeping the backbone/head identical to yolov10n.yaml. Adjust 'channels' for your T.
+
+# Parameters
+nc: 80  # number of classes (adjust as needed)
+channels: 12  # 3T channels, e.g., T=4 -> 12; set to 3*T for your sequence length
+scales:  # model compound scaling constants, i.e. 'model=yolov10n.yaml' will call yolov10.yaml with scale 'n'
+  # [depth, width, max_channels]
+  n: [0.33, 0.25, 1024]
+
+backbone:
+  # [from, repeats, module, args]
+  - [-1, 1, Conv, [64, 3, 2]] # 0-P1/2
+  - [-1, 1, PConv, [128, 3, 2]] # 1-P2/4
+  - [-1, 3, C2f, [128, True]]
+  - [-1, 1, PConv, [256, 3, 2]] # 3-P3/8
+  - [-1, 6, C2f_AssemFormer, [256, True]]
+  - [-1, 1, SCDown, [512, 3, 2]] # 5-P4/16
+  - [-1, 6, C2f_AssemFormer, [512, True]]
+  - [-1, 1, SCDown, [1024, 3, 2]] # 7-P5/32
+  - [-1, 3, C2f, [1024, True]]
+  - [-1, 1, SPPF, [1024, 5]] # 9
+  - [-1, 1, PSA, [1024]] # 10
+
+# YOLOv10.0n head
+head:
+  - [-1, 1, ChannelAttention_HSFPN, [4]] # 10
+  - [-1, 1, nn.Conv2d, [256, 1]] # 11
+  - [-1, 1, nn.ConvTranspose2d, [256, 3, 2, 1, 1]] # 12
+
+  - [6, 1, ChannelAttention_HSFPN, [4]] # 13
+  - [-1, 1, nn.Conv2d, [256, 1]] # 14
+  - [13, 1, ChannelAttention_HSFPN, [4, False]] # 15
+  - [[-1, -2], 1, Multiply, []] # 16
+  - [[-1, 13], 1, Add, []] # 17
+  - [-1, 3, C2fCIB, [256, 1, True]] # 18 P4/16
+
+  - [13, 1, nn.ConvTranspose2d, [256, 3, 2, 1, 1]] # 19
+  - [4, 1, ChannelAttention_HSFPN, [4]] # 20
+  - [-1, 1, nn.Conv2d, [256, 1]] # 21
+  - [20, 1, ChannelAttention_HSFPN, [4, False]] # 22
+  - [[-1, -2], 1, Multiply, []] # 23
+  - [[-1, 20], 1, Add, []] # 24
+  - [-1, 3, C2fCIB, [256, 1, True]] # 25 P3/16
+
+  - [[26, 19, 12], 1, v10Detect, [nc]] # Detect(P3, P4, P5)
+

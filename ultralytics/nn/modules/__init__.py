@@ -59,6 +59,8 @@ from .block import (
     ResNetLayer,
     SCDown,
     TorchVision,
+    C2f_AssemFormer,
+    C3k2_AssemFormer,
 )
 from .conv import (
     CBAM,

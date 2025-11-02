@@ -11,7 +11,7 @@ from PIL import Image
 from torch.utils.data import dataloader, distributed
 
 from ultralytics.cfg import IterableSimpleNamespace
-from ultralytics.data.dataset import GroundingDataset, YOLODataset, YOLOMultiModalDataset
+from ultralytics.data.dataset import GroundingDataset, YOLODataset, YOLOMultiModalDataset, YOLOMultiFrameDataset
 from ultralytics.data.loaders import (
     LOADERS,
     LoadImagesAndVideos,
@@ -123,8 +123,20 @@ def build_yolo_dataset(
     multi_modal: bool = False,
 ):
     """Build and return a YOLO dataset based on configuration parameters."""
-    dataset = YOLOMultiModalDataset if multi_modal else YOLODataset
-    return dataset(
+    use_multiframe = getattr(cfg, "t_frames", None)
+    dataset_cls = YOLOMultiModalDataset if multi_modal else (YOLOMultiFrameDataset if use_multiframe else YOLODataset)
+
+    # 当启用多帧时，确保 data["channels"] 与 YAML 保持一致（3 * T）
+    if use_multiframe:
+        t = int(use_multiframe)
+        data = dict(data)
+        data["channels"] = 3 * t
+
+    extra_kwargs = {"t_frames": int(use_multiframe)} if use_multiframe else {}
+    if use_multiframe and hasattr(cfg, "frame_stride"):
+        extra_kwargs["frame_stride"] = int(getattr(cfg, "frame_stride"))
+
+    return dataset_cls(
         img_path=img_path,
         imgsz=cfg.imgsz,
         batch_size=batch,
@@ -140,6 +152,7 @@ def build_yolo_dataset(
         classes=cfg.classes,
         data=data,
         fraction=cfg.fraction if mode == "train" else 1.0,
+        **extra_kwargs,
     )
 
 

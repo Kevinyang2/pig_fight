@@ -1,0 +1,13 @@
+train:  D:\googleDownload\pig_fight_DEC\train # train images (relative to 'path') 4 images
+val: D:\googleDownload\pig_fight_DEC\valid-dark  # val images (relative to 'path') 4 images
+#test: D:\googleDownload\pig_data\test
+
+nc: 2
+
+# class names
+names: ['pig_fight','pig_normal']
+
+augment: False
+#erasing: 0.3
+#noise: 0.5
+#blur: 0.5

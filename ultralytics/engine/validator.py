@@ -178,6 +178,15 @@ class BaseValidator:
             else:
                 raise FileNotFoundError(emojis(f"Dataset '{self.args.data}' for task={self.args.task} not found ❌"))
 
+            # Override channels for multi-frame inputs if specified via args
+            if getattr(self.args, "t_frames", None):
+                try:
+                    t = int(self.args.t_frames)
+                    if t > 1:
+                        self.data["channels"] = 3 * t
+                except Exception:
+                    pass
+
             if self.device.type in {"cpu", "mps"}:
                 self.args.workers = 0  # faster CPU val as time dominated by inference, not dataloading
             if not (pt or (getattr(model, "dynamic", False) and not model.imx)):

@@ -14,6 +14,35 @@ from ultralytics.utils.torch_utils import autocast
 from .metrics import bbox_iou, probiou
 from .tal import bbox2dist
 
+import math
+
+
+class SlideLoss(nn.Module):
+    def __init__(self, loss_fcn):
+        super(SlideLoss, self).__init__()
+        self.loss_fcn = loss_fcn
+        self.reduction = loss_fcn.reduction
+        self.loss_fcn.reduction = 'none'  # required to apply SL to each element
+
+    def forward(self, pred, true, auto_iou=0.5):
+        loss = self.loss_fcn(pred, true)
+        if auto_iou < 0.2:
+            auto_iou = 0.2
+        b1 = true <= auto_iou - 0.1
+        a1 = 1.0
+        b2 = (true > (auto_iou - 0.1)) & (true < auto_iou)
+        a2 = math.exp(1.0 - auto_iou)
+        b3 = true >= auto_iou
+        a3 = torch.exp(-(true - 1.0))
+        modulating_weight = a1 * b1 + a2 * b2 + a3 * b3
+        loss *= modulating_weight
+        if self.reduction == 'mean':
+            return loss.mean()
+        elif self.reduction == 'sum':
+            return loss.sum()
+        else:  # 'none'
+            return loss
+
 
 class VarifocalLoss(nn.Module):
     """
@@ -103,6 +132,35 @@ class DFLoss(nn.Module):
             F.cross_entropy(pred_dist, tl.view(-1), reduction="none").view(tl.shape) * wl
             + F.cross_entropy(pred_dist, tr.view(-1), reduction="none").view(tl.shape) * wr
         ).mean(-1, keepdim=True)
+
+
+class AdaptiveThresholdFocalLoss(nn.Module):
+    # Wraps focal loss around existing loss_fcn(), i.e. criteria = FocalLoss(nn.BCEWithLogitsLoss(), gamma=1.5)
+    def __init__(self, loss_fcn, gamma=1.5, alpha=0.15):
+        super(AdaptiveThresholdFocalLoss, self).__init__()
+        self.loss_fcn = loss_fcn  # must be nn.BCEWithLogitsLoss()
+        self.gamma = gamma
+        self.alpha = alpha
+
+    def forward(self, pred, true):
+        loss = self.loss_fcn(pred, true)
+        pred_prob = torch.sigmoid(pred)
+        p_t = true * pred_prob + (1 - true) * (1 - pred_prob)
+        p_t = torch.Tensor(p_t)
+
+        mean_pt = p_t.mean()
+        p_t_list = []
+        p_t_list.append(mean_pt)
+        p_t_old = sum(p_t_list) / len(p_t_list)
+        p_t_new = 0.05 * p_t_old + 0.95 * mean_pt
+        # gamma =2
+        gamma = -torch.log(p_t_new)
+        p_t_high = torch.where(p_t > 0.5, (1.000001 - p_t) ** gamma, torch.zeros_like(p_t))
+        p_t_low = torch.where(p_t <= 0.5, (1.5 - p_t) ** (-torch.log(p_t)), torch.zeros_like(p_t))  # # 将两部分结果相加
+        modulating_factor = p_t_high + p_t_low
+        loss *= modulating_factor
+
+        return loss
 
 
 class BboxLoss(nn.Module):
@@ -197,10 +255,15 @@ class v8DetectionLoss:
     def __init__(self, model, tal_topk: int = 10):  # model must be de-paralleled
         """Initialize v8DetectionLoss with model parameters and task-aligned assignment settings."""
         device = next(model.parameters()).device  # get model device
+        self.model = model  # keep reference for dynamic DAD updates
         h = model.args  # hyperparameters
 
         m = model.model[-1]  # Detect() module
         self.bce = nn.BCEWithLogitsLoss(reduction="none")
+        #facal loss
+        g = 0  # focal loss gamma
+        if g > 0:
+            self.bce = AdaptiveThresholdFocalLoss(self.bce, g)
         self.hyp = h
         self.stride = m.stride  # model strides
         self.nc = m.nc  # number of classes
@@ -213,6 +276,8 @@ class v8DetectionLoss:
         self.assigner = TaskAlignedAssigner(topk=tal_topk, num_classes=self.nc, alpha=0.5, beta=6.0)
         self.bbox_loss = BboxLoss(m.reg_max).to(device)
         self.proj = torch.arange(m.reg_max, dtype=torch.float, device=device)
+        # EMA buffer for difficulty (1 - mean IoU) per class
+        self.dad_dhat_ema = None
 
     def preprocess(self, targets: torch.Tensor, batch_size: int, scale_tensor: torch.Tensor) -> torch.Tensor:
         """Preprocess targets by converting to tensor format and scaling coordinates."""
@@ -289,6 +354,37 @@ class v8DetectionLoss:
             loss[0], loss[2] = self.bbox_loss(
                 pred_distri, pred_bboxes, anchor_points, target_bboxes, target_scores, target_scores_sum, fg_mask
             )
+
+            # Difficulty update (IoU-based) for DAD head: difficulty_c = 1 - mean_iou_c
+            with torch.no_grad():
+                # Foreground indices over anchors
+                ious_fg = bbox_iou(
+                    pred_bboxes[fg_mask], target_bboxes[fg_mask], xywh=False, CIoU=True
+                ).detach().view(-1)
+
+                # Derive class indices from target_scores one-hot over classes
+                cls_fg = target_scores[fg_mask].argmax(-1).view(-1).to(torch.long)
+
+                # Aggregate per-class mean IoU for current batch
+                num_classes = self.nc
+                device = ious_fg.device
+                sum_iou = torch.zeros(num_classes, device=device)
+                cnt = torch.zeros(num_classes, device=device)
+                sum_iou.scatter_add_(0, cls_fg, ious_fg)
+                cnt.scatter_add_(0, cls_fg, torch.ones_like(ious_fg))
+                mean_iou = torch.where(cnt > 0, sum_iou / cnt.clamp_min(1), torch.zeros_like(sum_iou))
+
+                # Convert to difficulty and apply EMA smoothing
+                difficulty = (1.0 - mean_iou).clamp_(0.0, 1.0)
+                if self.dad_dhat_ema is None or self.dad_dhat_ema.shape[0] != num_classes:
+                    self.dad_dhat_ema = difficulty
+                else:
+                    self.dad_dhat_ema = 0.9 * self.dad_dhat_ema + 0.1 * difficulty
+
+                # Push to DetectDAD head if present
+                last = getattr(self.model, 'model', [None])[-1]
+                if hasattr(last, 'update_d_hat'):
+                    last.update_d_hat(self.dad_dhat_ema)
 
         loss[0] *= self.hyp.box  # box gain
         loss[1] *= self.hyp.cls  # cls gain

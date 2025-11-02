@@ -700,6 +700,61 @@ class YOLOConcatDataset(ConcatDataset):
             dataset.close_mosaic(hyp)
 
 
+class YOLOMultiFrameDataset(YOLODataset):
+    """
+    多帧堆叠数据集（按通道将 T 帧堆叠为 3T 通道，仅使用最后一帧的标注）。
+
+    - 输入：常规 YOLO 检测数据布局（images/ 与 labels/），每个样本的标签对应最后一帧。
+    - 行为：对第 i 个样本，加载 [i-(T-1)*stride, ..., i-1*stride, i] 的图像（不足时用边界帧补齐），
+            对齐到同一尺寸后在通道维拼接，得到 [H, W, 3T]，其标注来自最后一帧 i。
+    """
+
+    def __init__(self, *args, t_frames: int = 4, frame_stride: int = 1, **kwargs):
+        self.t_frames = max(1, int(t_frames))
+        self.frame_stride = max(1, int(frame_stride))
+        super().__init__(*args, **kwargs)
+
+    def get_image_and_label(self, index: int) -> Dict[str, Any]:
+        from copy import deepcopy as _dc
+        import numpy as _np
+
+        # 以最后一帧 i 的标签为准
+        label = _dc(self.labels[index])
+        label.pop("shape", None)
+
+        # 计算需要堆叠的帧索引，缺失则用边界索引补齐
+        idxs = []
+        for k in range(self.t_frames):
+            off = (self.t_frames - 1 - k) * self.frame_stride
+            idxs.append(max(0, index - off))
+
+        # 逐帧载入并确保尺寸一致（按最后一帧的 resized_shape 对齐）
+        # 先加载最后一帧，拿到其尺寸信息
+        last_im, last_hw0, last_hw = self.load_image(index)
+        H, W = last_im.shape[:2]
+        frames = [None] * self.t_frames
+        for j, idx in enumerate(idxs):
+            im_j, _, _ = self.load_image(idx)
+            if im_j.shape[:2] != (H, W):
+                im_j = cv2.resize(im_j, (W, H), interpolation=cv2.INTER_LINEAR)
+            frames[j] = im_j
+
+        # 按通道拼接 -> [H, W, 3T]
+        stacked = _np.concatenate(frames, axis=2)  # H x W x (3T)
+
+        # 组装标签字段（标注仅来自最后一帧）
+        label["img"] = stacked
+        label["ori_shape"] = last_hw0
+        label["resized_shape"] = last_hw
+        label["ratio_pad"] = (
+            label["resized_shape"][0] / label["ori_shape"][0],
+            label["resized_shape"][1] / label["ori_shape"][1],
+        )
+        if self.rect:
+            label["rect_shape"] = self.batch_shapes[self.batch[index]]
+        return self.update_labels_info(label)
+
+
 # TODO: support semantic segmentation
 class SemanticDataset(BaseDataset):
     """Semantic Segmentation Dataset."""
