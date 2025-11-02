@@ -32,7 +32,8 @@
   - `images/train`, `images/val`, `labels/train`, `labels/val`
   - 类别顺序：`0 -> pig_fight`、`1 -> pig_normal`
 - 若使用自定义路径，请修改 `pig.yaml` 中的 `train`, `val`, `test` 字段。
-- `data/` 目录提供了 CIFAR-10 示例与部分脚本，可参考其结构完成批量数据制作。
+  数据集链接如下:（提取码可发送邮箱至kevinyang0048@gamail.com进行申请）
+ https://pan.baidu.com/s/1xxO0Us1Vb_LUJCtRLB3QGg
 
 ## 模型训练
 
