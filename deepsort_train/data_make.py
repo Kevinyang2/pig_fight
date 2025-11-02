@@ -1,13 +1,15 @@
-import cv2
 import os
+
+import cv2
+
 
 def main():
     # 图像文件夹路径
-    img_path = 'G:\pig.v10i.yolov11\\test\images\\'
+    img_path = "G:\pig.v10i.yolov11\\test\images\\"
     # TXT格式的标注文件夹路径
-    anno_path = 'G:\pig.v10i.yolov11\\test\labels\\'
+    anno_path = "G:\pig.v10i.yolov11\\test\labels\\"
     # 裁剪图像输出路径
-    cut_path = 'G:\\ultralytics\deepsort_train\data\\test'
+    cut_path = "G:\\ultralytics\deepsort_train\data\\test"
 
     if not os.path.exists(cut_path):
         os.makedirs(cut_path)
@@ -15,9 +17,9 @@ def main():
     imagelist = os.listdir(img_path)
 
     for image in imagelist:
-        image_pre, ext = os.path.splitext(image)
+        image_pre, _ext = os.path.splitext(image)
         img_file = os.path.join(img_path, image)
-        txt_file = os.path.join(anno_path, image_pre + '.txt')
+        txt_file = os.path.join(anno_path, image_pre + ".txt")
 
         if not os.path.exists(txt_file):
             continue
@@ -27,7 +29,7 @@ def main():
             continue
 
         height, width = img.shape[:2]
-        with open(txt_file, 'r') as f:
+        with open(txt_file) as f:
             lines = f.readlines()
 
         obj_i = 0
@@ -63,12 +65,13 @@ def main():
 
             obj_i += 1
             try:
-                save_path = os.path.join(path, '{}_{:0>2d}.jpg'.format(image_pre, obj_i))
+                save_path = os.path.join(path, f"{image_pre}_{obj_i:0>2d}.jpg")
                 cv2.imwrite(save_path, img_cut)
             except:
                 continue
 
             print(f"Saved: {save_path}")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

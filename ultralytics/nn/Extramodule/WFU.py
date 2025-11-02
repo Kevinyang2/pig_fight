@@ -1,6 +1,6 @@
 import torch
-from torch import nn
 import torch.nn.functional as F
+from torch import nn
 
 
 def autopad(k, p=None, d=1):
@@ -37,7 +37,7 @@ class Conv(nn.Module):
 
 class HaarWavelet(nn.Module):
     def __init__(self, in_channels, grad=False):
-        super(HaarWavelet, self).__init__()
+        super().__init__()
         self.in_channels = in_channels
 
         self.haar_weights = torch.ones(4, 1, 2, 2)
@@ -71,7 +71,7 @@ class HaarWavelet(nn.Module):
 
 class WFU(nn.Module):
     def __init__(self, chn):
-        super(WFU, self).__init__()
+        super().__init__()
         dim_big, dim_small = chn
         self.dim = dim_big
         self.HaarWavelet = HaarWavelet(dim_big, grad=False)

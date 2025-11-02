@@ -4,7 +4,6 @@ import contextlib
 import pickle
 import re
 import types
-from .Extramodule import *
 from copy import deepcopy
 from pathlib import Path
 
@@ -31,11 +30,13 @@ from ultralytics.nn.modules import (
     Bottleneck,
     BottleneckCSP,
     C2f,
+    C2f_AssemFormer,
     C2fAttn,
     C2fCIB,
     C2fPSA,
     C3Ghost,
     C3k2,
+    C3k2_AssemFormer,
     C3x,
     CBFuse,
     CBLinear,
@@ -69,8 +70,6 @@ from ultralytics.nn.modules import (
     YOLOEDetect,
     YOLOESegment,
     v10Detect,
-    C3k2_AssemFormer,
-    C2f_AssemFormer,
 )
 from ultralytics.utils import DEFAULT_CFG_DICT, DEFAULT_CFG_KEYS, LOGGER, YAML, colorstr, emojis
 from ultralytics.utils.checks import check_requirements, check_suffix, check_yaml
@@ -95,6 +94,8 @@ from ultralytics.utils.torch_utils import (
     smart_inference_mode,
     time_sync,
 )
+
+from .Extramodule import *
 
 
 class BaseModel(torch.nn.Module):
@@ -184,11 +185,7 @@ class BaseModel(torch.nn.Module):
             pass
         for m in self.model:
             if m.f != -1:  # if not from previous layer
-                x = (
-                    y[m.f]
-                    if isinstance(m.f, int)
-                    else [x if j == -1 else y[j] for j in m.f]
-                )  # from earlier layers
+                x = y[m.f] if isinstance(m.f, int) else [x if j == -1 else y[j] for j in m.f]  # from earlier layers
             if profile:
                 self._profile_one_layer(m, x, dt)
             if hasattr(m, "backbone"):
@@ -207,13 +204,10 @@ class BaseModel(torch.nn.Module):
             if visualize:
                 feature_visualization(x, m.type, m.i, save_dir=visualize)
             if embed and m.i in embed:
-                embeddings.append(
-                    nn.functional.adaptive_avg_pool2d(x, (1, 1)).squeeze(-1).squeeze(-1)
-                )  # flatten
+                embeddings.append(nn.functional.adaptive_avg_pool2d(x, (1, 1)).squeeze(-1).squeeze(-1))  # flatten
                 if m.i == max(embed):
                     return torch.unbind(torch.cat(embeddings, 1), dim=0)
         return x
-
 
     def _predict_augment(self, x):
         """Perform augmentations on input image x and return augmented inference."""
@@ -320,7 +314,7 @@ class BaseModel(torch.nn.Module):
         self = super()._apply(fn)
         m = self.model[-1]  # Detect()
         if isinstance(
-            m, (Detect,DetectDAD)
+            m, (Detect, DetectDAD)
         ):  # includes all Detect subclasses like Segment, Pose, OBB, WorldDetect, YOLOEDetect, YOLOESegment
             m.stride = fn(m.stride)
             m.anchors = fn(m.anchors)
@@ -436,7 +430,9 @@ class DetectionModel(BaseModel):
 
         # Build strides
         m = self.model[-1]  # Detect()
-        if isinstance(m, (Detect,DetectDAD)):  # includes all Detect subclasses like Segment, Pose, OBB, YOLOEDetect, YOLOESegment
+        if isinstance(
+            m, (Detect, DetectDAD)
+        ):  # includes all Detect subclasses like Segment, Pose, OBB, YOLOEDetect, YOLOESegment
             s = 256  # 2x min stride
             m.inplace = self.inplace
 
@@ -453,9 +449,10 @@ class DetectionModel(BaseModel):
                 m.stride = torch.tensor([s / x.shape[-2] for x in _forward(torch.zeros(1, ch, s, s))])  # forward on CPU
             except RuntimeError:
                 try:
-                    self.model.to(torch.device('cuda'))
-                    m.stride = torch.tensor([s / x.shape[-2] for x in _forward(
-                        torch.zeros(1, ch, s, s).to(torch.device('cuda')))])  # forward on CUDA
+                    self.model.to(torch.device("cuda"))
+                    m.stride = torch.tensor(
+                        [s / x.shape[-2] for x in _forward(torch.zeros(1, ch, s, s).to(torch.device("cuda")))]
+                    )  # forward on CUDA
                 except RuntimeError as error:
                     raise error
             self.stride = m.stride
@@ -1636,7 +1633,7 @@ def parse_model(d, ch, verbose=True):
     if scales:
         scale = d.get("scale")
         if not scale:
-            scale = tuple(scales.keys())[0]
+            scale = next(iter(scales.keys()))
             LOGGER.warning(f"no model scale passed. Assuming scale='{scale}'.")
         depth, width, max_channels = scales[scale]
 
@@ -1650,7 +1647,7 @@ def parse_model(d, ch, verbose=True):
     ch = [ch]
     layers, save, c2 = [], [], ch[-1]  # layers, savelist, ch out
 
-    backbone = False  #add
+    backbone = False  # add
 
     base_modules = frozenset(
         {
@@ -1709,7 +1706,7 @@ def parse_model(d, ch, verbose=True):
             C3k2_AssemFormer,
             C2fCIB_AssemFormer,
             AIFI,
-            C2f_AssemFormer
+            C2f_AssemFormer,
         }
     )
     repeat_modules = frozenset(  # modules with 'repeat' arguments
@@ -1732,7 +1729,7 @@ def parse_model(d, ch, verbose=True):
         }
     )
     for i, (f, n, m, args) in enumerate(d["backbone"] + d["head"]):  # from, number, module, args
-        t = m   #add
+        t = m  # add
 
         m = (
             getattr(torch.nn, m[3:])
@@ -1801,8 +1798,14 @@ def parse_model(d, ch, verbose=True):
                 c2 = ch[f[0]]
             else:
                 c2 = ch[f]
-        elif m in (EfficientViT_M0, EfficientViT_M1, EfficientViT_M2, EfficientViT_M3, EfficientViT_M4,
-                   EfficientViT_M5,):
+        elif m in (
+            EfficientViT_M0,
+            EfficientViT_M1,
+            EfficientViT_M2,
+            EfficientViT_M3,
+            EfficientViT_M4,
+            EfficientViT_M5,
+        ):
             m = m(*args)
             c2 = m.channel
         elif m in frozenset({HGStem, HGBlock}):
@@ -1821,7 +1824,7 @@ def parse_model(d, ch, verbose=True):
         elif m is Concat:
             c2 = sum(ch[x] for x in f)
         elif m in frozenset(
-            {Detect, WorldDetect, YOLOEDetect, Segment, YOLOESegment, Pose, OBB, ImagePoolingAttn, v10Detect,DetectDAD}
+            {Detect, WorldDetect, YOLOEDetect, Segment, YOLOESegment, Pose, OBB, ImagePoolingAttn, v10Detect, DetectDAD}
         ):
             args.append([ch[x] for x in f])
             if m is Segment or m is YOLOESegment:
@@ -1837,7 +1840,7 @@ def parse_model(d, ch, verbose=True):
         elif m is CBFuse:
             c2 = ch[f[-1]]
         elif m in {MFM}:
-            if args[0] == 'head_channel':
+            if args[0] == "head_channel":
                 args[0] = d[args[0]]
             c1 = [ch[x] for x in f]
             c2 = make_divisible(min(args[0], max_channels) * width, 8)
@@ -1855,14 +1858,15 @@ def parse_model(d, ch, verbose=True):
             m_.backbone = True
         else:
             m_ = nn.Sequential(*(m(*args) for _ in range(n))) if n > 1 else m(*args)  # module
-            t = str(m)[8:-2].replace('__main__.', '')  # module type
+            t = str(m)[8:-2].replace("__main__.", "")  # module type
         m_.np = sum(x.numel() for x in m_.parameters())  # number params
         m_.i, m_.f, m_.type = i + 4 if backbone else i, f, t  # attach index, 'from' index, type
         if verbose:
-            np_val = getattr(m_, 'np', 0)
-            LOGGER.info(f'{i:>3}{str(f):>20}{n_:>3}{np_val:10.0f}  {t:<45}{str(args):<30}')  # print
-        save.extend(x % (i + 4 if backbone else i) for x in ([f] if isinstance(f, int) else f) if
-                    x != -1)  # append to savelist
+            np_val = getattr(m_, "np", 0)
+            LOGGER.info(f"{i:>3}{f!s:>20}{n_:>3}{np_val:10.0f}  {t:<45}{args!s:<30}")  # print
+        save.extend(
+            x % (i + 4 if backbone else i) for x in ([f] if isinstance(f, int) else f) if x != -1
+        )  # append to savelist
         layers.append(m_)
         if i == 0:
             ch = []
@@ -1911,7 +1915,7 @@ def guess_model_scale(model_path):
         (str): The size character of the model's scale (n, s, m, l, or x).
     """
     try:
-        return re.search(r"yolo(e-)?[v]?\d+([nslmx])", Path(model_path).stem).group(2)  # noqa
+        return re.search(r"yolo(e-)?[v]?\d+([nslmx])", Path(model_path).stem).group(2)
     except AttributeError:
         return ""
 
@@ -1962,7 +1966,7 @@ def guess_model_task(model):
                 return "pose"
             elif isinstance(m, OBB):
                 return "obb"
-            elif isinstance(m, (Detect, WorldDetect, YOLOEDetect, v10Detect,DetectDAD)):
+            elif isinstance(m, (Detect, WorldDetect, YOLOEDetect, v10Detect, DetectDAD)):
                 return "detect"
 
     # Guess from model filename
