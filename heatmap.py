@@ -1,20 +1,21 @@
 import warnings
 
-warnings.filterwarnings('ignore')
-warnings.simplefilter('ignore')
-import torch, yaml, cv2, os, shutil, sys, math
+warnings.filterwarnings("ignore")
+warnings.simplefilter("ignore")
+import math
+import os
+import shutil
+
+import cv2
 import numpy as np
+import torch
 
 np.random.seed(0)
-import matplotlib.pyplot as plt
-from tqdm import trange
 from PIL import Image
+from pytorch_grad_cam.utils.image import scale_cam_image, show_cam_on_image
+
 from ultralytics.nn.tasks import attempt_load_weights
-from ultralytics.utils.torch_utils import intersect_dicts
-from ultralytics.utils.ops import xywh2xyxy, non_max_suppression
-from pytorch_grad_cam import GradCAMPlusPlus, GradCAM, XGradCAM, EigenCAM, HiResCAM, LayerCAM, RandomCAM, EigenGradCAM
-from pytorch_grad_cam.utils.image import show_cam_on_image, scale_cam_image
-from pytorch_grad_cam.activations_and_gradients import ActivationsAndGradients
+from ultralytics.utils.ops import non_max_suppression
 
 
 def letterbox(im, new_shape=(640, 640), color=(114, 114, 114), auto=True, scaleFill=False, scaleup=True, stride=32):
@@ -30,7 +31,7 @@ def letterbox(im, new_shape=(640, 640), color=(114, 114, 114), auto=True, scaleF
 
     # Compute padding
     ratio = r, r  # width, height ratios
-    new_unpad = int(round(shape[1] * r)), int(round(shape[0] * r))
+    new_unpad = round(shape[1] * r), round(shape[0] * r)
     dw, dh = new_shape[1] - new_unpad[0], new_shape[0] - new_unpad[1]  # wh padding
     if auto:  # minimum rectangle
         dw, dh = np.mod(dw, stride), np.mod(dh, stride)  # wh padding
@@ -44,8 +45,8 @@ def letterbox(im, new_shape=(640, 640), color=(114, 114, 114), auto=True, scaleF
 
     if shape[::-1] != new_unpad:  # resize
         im = cv2.resize(im, new_unpad, interpolation=cv2.INTER_LINEAR)
-    top, bottom = int(round(dh - 0.1)), int(round(dh + 0.1))
-    left, right = int(round(dw - 0.1)), int(round(dw + 0.1))
+    top, bottom = round(dh - 0.1), round(dh + 0.1)
+    left, right = round(dw - 0.1), round(dw + 0.1)
     im = cv2.copyMakeBorder(im, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)  # add border
     return im, ratio, (dw, dh)
 
@@ -70,20 +71,20 @@ class yolov8_target(torch.nn.Module):
         if pred.ndim == 2:
             pred = pred.unsqueeze(0)
         # classification logits are last nc channels
-        cls_logits = pred[0, :, -self.nc:]
+        cls_logits = pred[0, :, -self.nc :]
         # optional: boxes first 4 channels (not used when ouput_type='class')
         boxes = pred[0, :, :4]
         scores, _ = cls_logits.max(dim=1)
         # select top-k by ratio with confidence threshold
         n = cls_logits.shape[0]
-        k = max(1, min(n, int(math.ceil(n * float(self.ratio)))))
+        k = max(1, min(n, math.ceil(n * float(self.ratio))))
         vals, idx = torch.topk(scores, k)
         mask = vals >= self.conf
         selected_scores = vals[mask]
         if selected_scores.numel() == 0:
             return torch.tensor(0.0, device=pred.device)
         loss = selected_scores.sum()
-        if self.ouput_type in ('box', 'all'):
+        if self.ouput_type in ("box", "all"):
             sel_boxes = boxes[idx[mask]]
             loss = loss + sel_boxes.sum()
         return loss
@@ -93,7 +94,7 @@ class yolov10_heatmap:
     def __init__(self, weight, device, method, layer, backward_type, conf_threshold, ratio, show_box, renormalize):
         device = torch.device(device)
         ckpt = torch.load(weight)
-        model_names = ckpt['model'].names
+        model_names = ckpt["model"].names
         model = attempt_load_weights(weight, device)
         model.info()
         for p in model.parameters():
@@ -103,7 +104,7 @@ class yolov10_heatmap:
         # 构造目标函数，传入类别数以从预测张量尾部切分类别 logits
         target = yolov8_target(backward_type, conf_threshold, ratio, nc=len(model_names))
         target_layers = [model.model[l] for l in layer]
-        method = eval(method)(model, target_layers, use_cuda=device.type == 'cuda')
+        method = eval(method)(model, target_layers, use_cuda=device.type == "cuda")
 
         colors = np.random.uniform(0, 255, size=(len(model_names), 3))
         self.__dict__.update(locals())
@@ -115,13 +116,22 @@ class yolov10_heatmap:
     def draw_detections(self, box, color, name, img):
         xmin, ymin, xmax, ymax = list(map(int, list(box)))
         cv2.rectangle(img, (xmin, ymin), (xmax, ymax), tuple(int(x) for x in color), 2)
-        cv2.putText(img, str(name), (xmin, ymin - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.8, tuple(int(x) for x in color), 2,
-                    lineType=cv2.LINE_AA)
+        cv2.putText(
+            img,
+            str(name),
+            (xmin, ymin - 5),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.8,
+            tuple(int(x) for x in color),
+            2,
+            lineType=cv2.LINE_AA,
+        )
         return img
 
     def renormalize_cam_in_bounding_boxes(self, boxes, image_float_np, grayscale_cam):
-        """Normalize the CAM to be in the range [0, 1]
-        inside every bounding boxes, and zero outside of the bounding boxes. """
+        """Normalize the CAM to be in the range [0, 1] inside every bounding boxes, and zero outside of the bounding
+        boxes.
+        """
         renormalized_cam = np.zeros(grayscale_cam.shape, dtype=np.float32)
         for x1, y1, x2, y2 in boxes:
             x1, y1 = max(x1, 0), max(y1, 0)
@@ -141,7 +151,7 @@ class yolov10_heatmap:
 
         try:
             grayscale_cam = self.method(tensor, [self.target])
-        except AttributeError as e:
+        except AttributeError:
             return
 
         grayscale_cam = grayscale_cam[0, :]
@@ -150,14 +160,18 @@ class yolov10_heatmap:
         pred = self.model(tensor)[0]
         pred = self.post_process(pred)
         if self.renormalize:
-            cam_image = self.renormalize_cam_in_bounding_boxes(pred[:, :4].cpu().detach().numpy().astype(np.int32), img,
-                                                               grayscale_cam)
+            cam_image = self.renormalize_cam_in_bounding_boxes(
+                pred[:, :4].cpu().detach().numpy().astype(np.int32), img, grayscale_cam
+            )
         if self.show_box:
             for data in pred:
                 data = data.cpu().detach().numpy()
-                cam_image = self.draw_detections(data[:4], self.colors[int(data[4:].argmax())],
-                                                 f'{self.model_names[int(data[4:].argmax())]} {float(data[4:].max()):.2f}',
-                                                 cam_image)
+                cam_image = self.draw_detections(
+                    data[:4],
+                    self.colors[int(data[4:].argmax())],
+                    f"{self.model_names[int(data[4:].argmax())]} {float(data[4:].max()):.2f}",
+                    cam_image,
+                )
 
         cam_image = Image.fromarray(cam_image)
         cam_image.save(save_path)
@@ -171,28 +185,27 @@ class yolov10_heatmap:
 
         if os.path.isdir(img_path):
             for img_path_ in os.listdir(img_path):
-                self.process(f'{img_path}/{img_path_}', f'{save_path}/{img_path_}')
+                self.process(f"{img_path}/{img_path_}", f"{save_path}/{img_path_}")
         else:
-            self.process(img_path, f'{save_path}/result.png')
+            self.process(img_path, f"{save_path}/result.png")
 
 
 def get_params():
     params = {
-        'weight': 'runs/train/v10-BS_exp/weights/best.pt',  # 只需要指定权重即可（或自定义 best.pt）
-        'device': 'cuda:0',
-        'method': 'XGradCAM',
+        "weight": "runs/train/v10-BS_exp/weights/best.pt",  # 只需要指定权重即可（或自定义 best.pt）
+        "device": "cuda:0",
+        "method": "XGradCAM",
         # GradCAMPlusPlus, GradCAM, XGradCAM, EigenCAM, HiResCAM, LayerCAM, RandomCAM, EigenGradCAM
-        'layer': [10, 12, 14, 16, 18],
-        'backward_type': 'class',  # class, box, all
-        'conf_threshold': 0.2,  # 0.2
-        'ratio': 0.02,  # 0.02-0.1
-        'show_box': False,
-        'renormalize': True
+        "layer": [10, 12, 14, 16, 18],
+        "backward_type": "class",  # class, box, all
+        "conf_threshold": 0.2,  # 0.2
+        "ratio": 0.02,  # 0.02-0.1
+        "show_box": False,
+        "renormalize": True,
     }
     return params
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     model = yolov10_heatmap(**get_params())
-    model("F:\生猪争斗行为视频数据\\test_frames\\video_20201218_144915_264\\000003.jpg", 'result-heatmap')
-
+    model("F:\生猪争斗行为视频数据\\test_frames\\video_20201218_144915_264\\000003.jpg", "result-heatmap")
