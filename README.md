@@ -33,7 +33,7 @@
   - 类别顺序：`0 -> pig_fight`、`1 -> pig_normal`
 - 若使用自定义路径，请修改 `pig.yaml` 中的 `train`, `val`, `test` 字段。
 - 数据集链接如下:（提取码可发送邮件 kevinyang0048@gmail.com 进行申请）
- https://pan.baidu.com/s/1xxO0Us1Vb_LUJCtRLB3QGg
+  https://pan.baidu.com/s/1xxO0Us1Vb_LUJCtRLB3QGg
 
 ## 模型训练
 
@@ -41,10 +41,10 @@
   ```bash
   # 示例：使用改进的 YOLOv10 配置进行训练
   yolo detect train \
-      data=pig.yaml \
-      cfg=ultralytics/cfg/models/v10/yolov10n-APConv-AssemFormer-HSFPN.yaml \
-      epochs=100 imgsz=640 device=0 \
-      project=runs/train name=yolov10n_pig
+    data=pig.yaml \
+    cfg=ultralytics/cfg/models/v10/yolov10n-APConv-AssemFormer-HSFPN.yaml \
+    epochs=100 imgsz=640 device=0 \
+    project=runs/train name=yolov10n_pig
   ```
 - 常用参数说明：
   - `cfg`：选择增强后的模型结构（仓库已提供多种版本）。
@@ -57,23 +57,19 @@
 - 评估指标：
   ```bash
   yolo detect val \
-      data=pig.yaml \
-      model=runs/train/yolov10n_pig/weights/best.pt \
-      imgsz=640 batch=16 device=0
+    data=pig.yaml \
+    model=runs/train/yolov10n_pig/weights/best.pt \
+    imgsz=640 batch=16 device=0
   ```
 - 消融对比：仓库中 `ultralytics/cfg/models/**` 提供了多种注意力/特征融合模块，可通过切换配置验证对 mAP 与 FPS 的影响。
 
-
-
 ```bash
 python fight_pipeline.py \
-    --det-weights runs/train/yolov10n_pig/weights/best.pt \
-    --fight-weights runs/train/yolo11_fight/weights/best.pt \
-    --source data/videos/pig_demo.mp4 \
-    --save-video --save-overlay --project runs/fight --name exp01
+  --det-weights runs/train/yolov10n_pig/weights/best.pt \
+  --fight-weights runs/train/yolo11_fight/weights/best.pt \
+  --source data/videos/pig_demo.mp4 \
+  --save-video --save-overlay --project runs/fight --name exp01
 ```
-
-
 
 ## 结果展示
 
@@ -81,7 +77,6 @@ python fight_pipeline.py \
 
 - `results/mAP50(B).png`：记录主要实验在验证集上的 mAP@0.5 指标。
 - `result-v10-BS*/`：不同 batch size/模型结构的预测可视化，用于对比模型稳定性。
-
 
 ## 致谢
 
