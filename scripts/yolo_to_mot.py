@@ -1,6 +1,7 @@
 import argparse
-from pathlib import Path
 import sys
+from pathlib import Path
+
 import cv2
 
 # Ensure local repository ultralytics (with Extramodule/CBAM) is importable before site-packages
@@ -10,22 +11,25 @@ if str(ROOT) not in sys.path:
 
 from ultralytics import YOLO
 
+
 def ensure_dir(p: Path):
     p.mkdir(parents=True, exist_ok=True)
+
 
 def write_seqinfo(seq_dir: Path, seq_name: str, width: int, height: int, seq_len: int, fps: float):
     ini = [
         "[Sequence]",
         f"name={seq_name}",
         "imDir=img1",
-        f"frameRate={int(round(fps))}",
+        f"frameRate={round(fps)}",
         f"seqLength={seq_len}",
         f"imWidth={width}",
         f"imHeight={height}",
         "imExt=.jpg",
-        ""
+        "",
     ]
     (seq_dir / "seqinfo.ini").write_text("\n".join(ini), encoding="utf-8")
+
 
 def main():
     parser = argparse.ArgumentParser(description="Convert YOLO tracking to MOT format and optional ReID crops.")
@@ -120,6 +124,7 @@ def main():
 
         if frame_idx > 0:
             write_seqinfo(seq_dir, seq_dir.name, im_w, im_h, frame_idx, fps)
+
 
 if __name__ == "__main__":
     main()

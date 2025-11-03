@@ -1,17 +1,18 @@
-import numpy as np
-from typing import Union, Sequence, Tuple, Optional
-import torch
-from torch import nn, Tensor
-import torch.nn.functional as F
-from typing import Any, Callable
-from torchvision.ops import StochasticDepth as StochasticDepthTorch
+from __future__ import annotations
 
-from ultralytics.utils.torch_utils import fuse_conv_and_bn
+from collections.abc import Sequence
+from typing import Any, Callable
+
+import numpy as np
+import torch
+import torch.nn.functional as F
+from torch import Tensor, nn
+from torchvision.ops import StochasticDepth as StochasticDepthTorch
 
 
 class Dropout(nn.Dropout):
     def __init__(self, p: float = 0.5, inplace: bool = False):
-        super(Dropout, self).__init__(p=p, inplace=inplace)
+        super().__init__(p=p, inplace=inplace)
 
 
 class StochasticDepth(StochasticDepthTorch):
@@ -23,12 +24,10 @@ def pair(Val):
     return Val if isinstance(Val, (tuple, list)) else (Val, Val)
 
 
-def makeDivisible(v: float, divisor: int, min_value: Optional[int] = None) -> int:
-    """
-    This function is taken from the original tf repo.
-    It ensures that all layers have a channel number that is divisible by 8
-    It can be seen here:
-    https://github.com/tensorflow/models/blob/master/research/slim/nets/mobilenet/mobilenet.Py
+def makeDivisible(v: float, divisor: int, min_value: int | None = None) -> int:
+    """This function is taken from the original tf repo. It ensures that all layers have a channel number that is
+    divisible by 8 It can be seen
+    here: https://github.com/tensorflow/models/blob/master/research/slim/nets/mobilenet/mobilenet.Py.
     """
     if min_value is None:
         min_value = divisor
@@ -40,22 +39,19 @@ def makeDivisible(v: float, divisor: int, min_value: Optional[int] = None) -> in
 
 
 class LinearSelfAttention(nn.Module):
-    """
-    This layer applies a self-attention with linear complexity, as described in `MobileViTv2 <https://arxiv.org/abs/2206.02680>`_ paper.
-    This layer can be used for self- as well as cross-attention.
+    """This layer applies a self-attention with linear complexity, as described in `MobileViTv2
+    <https://arxiv.org/abs/2206.02680>`_ paper. This layer can be used for self- as well as cross-attention.
 
     Args:
         opts: command line arguments
         DimEmbed (int): :math:`C` from an expected input of size :math:`(N, C, H, W)`
         AttnDropRate (Optional[float]): Dropout value for context scores. Default: 0.0
         bias (Optional[bool]): Use bias in learnable layers. Default: True
-
-    Shape:
+        Shape:
         - Input: :math:`(N, C, P, N)` where :math:`N` is the batch size, :math:`C` is the input channels,
         :math:`P` is the number of pixels in the patch, and :math:`N` is the number of patches
         - Output: same as the input
-
-    .. note::
+        .. note::
         For MobileViTv2, we unfold the feature map [B, C, H, W] into [B, C, P, N] where P is the number of pixels
         in a patch and N is the number of patches. Because channel is the first dimension in this unfolded tensor,
         we use point-wise convolution (instead of a linear layer). This avoids a transpose operation (which may be
@@ -64,10 +60,10 @@ class LinearSelfAttention(nn.Module):
     """
 
     def __init__(
-            self,
-            DimEmbed: int,
-            AttnDropRate: Optional[float] = 0.0,
-            Bias: Optional[bool] = True,
+        self,
+        DimEmbed: int,
+        AttnDropRate: float | None = 0.0,
+        Bias: bool | None = True,
     ) -> None:
         super().__init__()
 
@@ -84,9 +80,7 @@ class LinearSelfAttention(nn.Module):
         # Project x into query, key and value
         # Query --> [B, 1, P, N]
         # value, key --> [B, d, P, N]
-        query, key, value = torch.split(
-            qkv, split_size_or_sections=[1, self.DimEmbed, self.DimEmbed], dim=1
-        )
+        query, key, value = torch.split(qkv, split_size_or_sections=[1, self.DimEmbed, self.DimEmbed], dim=1)
 
         # apply softmax along N dimension
         context_scores = F.softmax(query, dim=-1)
@@ -109,12 +103,12 @@ class LinearSelfAttention(nn.Module):
 
 class LinearAttnFFN(nn.Module):
     def __init__(
-            self,
-            DimEmbed: int,
-            DimFfnLatent: int,
-            AttnDropRate: Optional[float] = 0.0,
-            DropRate: Optional[float] = 0.1,
-            FfnDropRate: Optional[float] = 0.0,
+        self,
+        DimEmbed: int,
+        DimFfnLatent: int,
+        AttnDropRate: float | None = 0.0,
+        DropRate: float | None = 0.1,
+        FfnDropRate: float | None = 0.0,
     ) -> None:
         super().__init__()
         AttnUnit = LinearSelfAttention(DimEmbed, AttnDropRate, Bias=True)
@@ -146,22 +140,22 @@ class LinearAttnFFN(nn.Module):
 
 class BaseConv2d(nn.Module):
     def __init__(
-            self,
-            in_channels: int,
-            out_channels: int,
-            kernel_size: int,
-            stride: Optional[int] = 1,
-            padding: Optional[int] = None,
-            groups: Optional[int] = 1,
-            bias: Optional[bool] = None,
-            BNorm: bool = False,
-            # norm_layer: Optional[Callable[..., nn.Module]]=nn.BatchNorm2d,
-            ActLayer: Optional[Callable[..., nn.Module]] = None,
-            dilation: int = 1,
-            Momentum: Optional[float] = 0.1,
-            **kwargs: Any
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: int,
+        stride: int | None = 1,
+        padding: int | None = None,
+        groups: int | None = 1,
+        bias: bool | None = None,
+        BNorm: bool = False,
+        # norm_layer: Optional[Callable[..., nn.Module]]=nn.BatchNorm2d,
+        ActLayer: Callable[..., nn.Module] | None = None,
+        dilation: int = 1,
+        Momentum: float | None = 0.1,
+        **kwargs: Any,
     ) -> None:
-        super(BaseConv2d, self).__init__()
+        super().__init__()
         if padding is None:
             padding = int((kernel_size - 1) // 2 * dilation)
 
@@ -176,13 +170,12 @@ class BaseConv2d(nn.Module):
         self.groups = groups
         self.bias = bias
 
-        self.Conv = nn.Conv2d(in_channels, out_channels,
-                              kernel_size, stride, padding, dilation, groups, bias, **kwargs)
+        self.Conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias, **kwargs)
 
         self.Bn = nn.BatchNorm2d(out_channels, eps=0.001, momentum=Momentum) if BNorm else nn.Identity()
 
         if ActLayer is not None:
-            if isinstance(list(ActLayer().named_modules())[0][1], nn.Sigmoid):
+            if isinstance(next(iter(ActLayer().named_modules()))[1], nn.Sigmoid):
                 self.Act = ActLayer()
             else:
                 self.Act = ActLayer(inplace=True)
@@ -199,33 +192,43 @@ class BaseConv2d(nn.Module):
 
 class BaseFormer(nn.Module):
     def __init__(
-            self,
-            InChannels: int,
-            FfnMultiplier: Optional[Union[Sequence[Union[int, float]], int, float]] = 2.0,
-            NumAttnBlocks: Optional[int] = 2,
-            AttnDropRate: Optional[float] = 0.0,
-            DropRate: Optional[float] = 0.0,
-            FfnDropRate: Optional[float] = 0.0,
-            PatchRes: Optional[int] = 2,
-            Dilation: Optional[int] = 1,
-            ViTSELayer: Optional[nn.Module] = None,
-            **kwargs: Any,
+        self,
+        InChannels: int,
+        FfnMultiplier: Sequence[int | float] | int | float | None = 2.0,
+        NumAttnBlocks: int | None = 2,
+        AttnDropRate: float | None = 0.0,
+        DropRate: float | None = 0.0,
+        FfnDropRate: float | None = 0.0,
+        PatchRes: int | None = 2,
+        Dilation: int | None = 1,
+        ViTSELayer: nn.Module | None = None,
+        **kwargs: Any,
     ) -> None:
         DimAttnUnit = InChannels // 2
         DimCNNOut = DimAttnUnit
 
         Conv3x3In = BaseConv2d(
-            InChannels, InChannels, 3, 1, dilation=Dilation,
-            BNorm=True, ActLayer=nn.SiLU,
+            InChannels,
+            InChannels,
+            3,
+            1,
+            dilation=Dilation,
+            BNorm=True,
+            ActLayer=nn.SiLU,
         )  # depth-wise separable convolution
         ViTSELayer = ViTSELayer(InChannels, **kwargs) if ViTSELayer is not None else nn.Identity()
         Conv1x1In = BaseConv2d(InChannels, DimCNNOut, 1, 1, bias=False)
 
-        super(BaseFormer, self).__init__()
+        super().__init__()
         self.LocalRep = nn.Sequential(Conv3x3In, ViTSELayer, Conv1x1In)
 
         self.GlobalRep, DimAttnUnit = self.buildAttnLayer(
-            DimAttnUnit, FfnMultiplier, NumAttnBlocks, AttnDropRate, DropRate, FfnDropRate,
+            DimAttnUnit,
+            FfnMultiplier,
+            NumAttnBlocks,
+            AttnDropRate,
+            DropRate,
+            FfnDropRate,
         )
         self.ConvProj = BaseConv2d(DimCNNOut, InChannels, 1, 1, BNorm=True)
 
@@ -235,19 +238,16 @@ class BaseFormer(nn.Module):
         self.PatchArea = self.WPatch * self.HPatch
 
     def buildAttnLayer(
-            self,
-            DimModel: int,
-            FfnMult: Union[Sequence, int, float],
-            NumAttnBlocks: int,
-            AttnDropRate: float,
-            DropRate: float,
-            FfnDropRate: float,
-    ) -> Tuple[nn.Module, int]:
-
+        self,
+        DimModel: int,
+        FfnMult: Sequence | int | float,
+        NumAttnBlocks: int,
+        AttnDropRate: float,
+        DropRate: float,
+        FfnDropRate: float,
+    ) -> tuple[nn.Module, int]:
         if isinstance(FfnMult, Sequence) and len(FfnMult) == 2:
-            DimFfn = (
-                    np.linspace(FfnMult[0], FfnMult[1], NumAttnBlocks, dtype=float) * DimModel
-            )
+            DimFfn = np.linspace(FfnMult[0], FfnMult[1], NumAttnBlocks, dtype=float) * DimModel
         elif isinstance(FfnMult, Sequence) and len(FfnMult) == 1:
             DimFfn = [FfnMult[0] * DimModel] * NumAttnBlocks
         elif isinstance(FfnMult, (int, float)):
@@ -265,7 +265,7 @@ class BaseFormer(nn.Module):
         GlobalRep.append(nn.BatchNorm2d(DimModel))
         return nn.Sequential(*GlobalRep), DimModel
 
-    def unfolding(self, FeatureMap: Tensor) -> Tuple[Tensor, Tuple[int, int]]:
+    def unfolding(self, FeatureMap: Tensor) -> tuple[Tensor, tuple[int, int]]:
         B, C, H, W = FeatureMap.shape
 
         # [B, C, H, W] --> [B, C, P, N]
@@ -274,13 +274,11 @@ class BaseFormer(nn.Module):
             kernel_size=(self.HPatch, self.WPatch),
             stride=(self.HPatch, self.WPatch),
         )
-        Patches = Patches.reshape(
-            B, C, self.HPatch * self.WPatch, -1
-        )
+        Patches = Patches.reshape(B, C, self.HPatch * self.WPatch, -1)
 
         return Patches, (H, W)
 
-    def folding(self, Patches: Tensor, OutputSize: Tuple[int, int]) -> Tensor:
+    def folding(self, Patches: Tensor, OutputSize: tuple[int, int]) -> Tensor:
         B, C, P, N = Patches.shape  # BatchSize, DimIn, PatchSize, NumPatches
 
         # [B, C, P, N]
@@ -313,27 +311,36 @@ class BaseFormer(nn.Module):
 
 # AssemFormer, a method that combines convolution with a vision transformer by assembling tensors.
 class AssemFormer(BaseFormer):
-    """
-    Inspired by MobileViTv3.
-    Adapted from https://github.com/micronDLA/MobileViTv3/blob/main/MobileViTv3-v2/cvnets/modules/mobilevit_block.py
+    """Inspired by MobileViTv3. Adapted from
+    https://github.com/micronDLA/MobileViTv3/blob/main/MobileViTv3-v2/cvnets/modules/mobilevit_block.py.
     """
 
     def __init__(
-            self,
-            InChannels: int,
-            FfnMultiplier: Optional[Union[Sequence[Union[int, float]], int, float]] = 2.0,
-            NumAttnBlocks: Optional[int] = 2,
-            AttnDropRate: Optional[float] = 0.0,
-            DropRate: Optional[float] = 0.0,
-            FfnDropRate: Optional[float] = 0.0,
-            PatchRes: Optional[int] = 2,
-            Dilation: Optional[int] = 1,
-            SDProb: Optional[float] = 0.0,
-            ViTSELayer: Optional[nn.Module] = None,
-            **kwargs: Any,
+        self,
+        InChannels: int,
+        FfnMultiplier: Sequence[int | float] | int | float | None = 2.0,
+        NumAttnBlocks: int | None = 2,
+        AttnDropRate: float | None = 0.0,
+        DropRate: float | None = 0.0,
+        FfnDropRate: float | None = 0.0,
+        PatchRes: int | None = 2,
+        Dilation: int | None = 1,
+        SDProb: float | None = 0.0,
+        ViTSELayer: nn.Module | None = None,
+        **kwargs: Any,
     ) -> None:
-        super().__init__(InChannels, FfnMultiplier, NumAttnBlocks, AttnDropRate,
-                         DropRate, FfnDropRate, PatchRes, Dilation, ViTSELayer, **kwargs)
+        super().__init__(
+            InChannels,
+            FfnMultiplier,
+            NumAttnBlocks,
+            AttnDropRate,
+            DropRate,
+            FfnDropRate,
+            PatchRes,
+            Dilation,
+            ViTSELayer,
+            **kwargs,
+        )
         # AssembleFormer: input changed from just global to local + global
         self.ConvProj = BaseConv2d(2 * self.DimCNNOut, InChannels, 1, 1, BNorm=True)
 
@@ -468,6 +475,3 @@ class C3k2_AssemFormer(C2f_AssemFormer):
         self.m = nn.ModuleList(
             C3k(self.c, self.c, 2, shortcut, g) if c3k else Bottleneck(self.c, self.c, shortcut, g) for _ in range(n)
         )
-
-
-
