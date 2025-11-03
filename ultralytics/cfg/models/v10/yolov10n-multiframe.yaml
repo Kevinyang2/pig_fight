@@ -5,9 +5,9 @@
 # keeping the backbone/head identical to yolov10n.yaml. Adjust 'channels' for your T.
 
 # Parameters
-nc: 80  # number of classes (adjust as needed)
-channels: 12  # 3T channels, e.g., T=4 -> 12; set to 3*T for your sequence length
-scales:  # model compound scaling constants, i.e. 'model=yolov10n.yaml' will call yolov10.yaml with scale 'n'
+nc: 80 # number of classes (adjust as needed)
+channels: 12 # 3T channels, e.g., T=4 -> 12; set to 3*T for your sequence length
+scales: # model compound scaling constants, i.e. 'model=yolov10n.yaml' will call yolov10.yaml with scale 'n'
   # [depth, width, max_channels]
   n: [0.33, 0.25, 1024]
 
