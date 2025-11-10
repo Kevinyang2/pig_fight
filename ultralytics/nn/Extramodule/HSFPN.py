@@ -4,7 +4,7 @@ import torch.nn as nn
 
 class ChannelAttention_HSFPN(nn.Module):
     def __init__(self, in_planes, ratio=4, flag=True):
-        super(ChannelAttention_HSFPN, self).__init__()
+        super().__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.max_pool = nn.AdaptiveMaxPool2d(1)
 
