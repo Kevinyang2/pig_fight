@@ -5,11 +5,13 @@ from ultralytics import YOLO
 model = YOLO("runs/train/v10-Test_exp7/weights/best.pt")  # load a custom model
 
 # Predict with the model
-results = model("F:\pig_fight_DEC\\valid\images\\000001_jpg.rf.50f7ead7b6fff2f8d38b959c0c35f0d1.jpg",
-                show=True,
-                save=True,
-                save_txt=False,
-                visualize=False)  # predict on an image
+results = model(
+    "F:\pig_fight_DEC\\valid\images\\000001_jpg.rf.50f7ead7b6fff2f8d38b959c0c35f0d1.jpg",
+    show=True,
+    save=True,
+    save_txt=False,
+    visualize=False,
+)  # predict on an image
 
 # Access the results
 for result in results:
