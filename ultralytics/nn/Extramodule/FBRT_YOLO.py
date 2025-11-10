@@ -35,10 +35,7 @@ class Conv(nn.Module):
 class Channel(nn.Module):
     def __init__(self, dim):
         super().__init__()
-        self.dwconv = self.dconv = nn.Conv2d(
-            dim, dim, 3,
-            1, 1, groups=dim
-        )
+        self.dwconv = self.dconv = nn.Conv2d(dim, dim, 3, 1, 1, groups=dim)
         self.Apt = nn.AdaptiveAvgPool2d(1)
         self.sigmoid = nn.Sigmoid()
 
@@ -171,20 +168,16 @@ class FCM(nn.Module):
 class Pzconv(nn.Module):
     def __init__(self, dim, k=1, s=1, p=None, g=1, d=1, act=True):
         super().__init__()
-        self.conv1 = nn.Conv2d(
-            dim, dim, 3,
-            1, 1, groups=dim
+        self.conv1 = nn.Conv2d(dim, dim, 3, 1, 1, groups=dim)
+        self.conv2 = Conv(
+            dim,
+            dim,
+            k=1,
+            s=1,
         )
-        self.conv2 = Conv(dim, dim, k=1, s=1, )
-        self.conv3 = nn.Conv2d(
-            dim, dim, 5,
-            1, 2, groups=dim
-        )
+        self.conv3 = nn.Conv2d(dim, dim, 5, 1, 2, groups=dim)
         self.conv4 = Conv(dim, dim, 1, 1)
-        self.conv5 = nn.Conv2d(
-            dim, dim, 7,
-            1, 3, groups=dim
-        )
+        self.conv5 = nn.Conv2d(dim, dim, 7, 1, 3, groups=dim)
 
     def forward(self, x):
         x1 = self.conv1(x)
@@ -209,9 +202,8 @@ class Down(nn.Module):
 
 
 def autopad(k, p=None, d=1):
-    """
-    Pads kernel to 'same' output shape, adjusting for optional dilation; returns padding size.
-    `k`: kernel, `p`: padding, `d`: dilation.
+    """Pads kernel to 'same' output shape, adjusting for optional dilation; returns padding size. `k`: kernel, `p`:
+    padding, `d`: dilation.
     """
     if d > 1:
         k = d * (k - 1) + 1 if isinstance(k, int) else [d * (x - 1) + 1 for x in k]  # actual kernel-size
@@ -316,10 +308,4 @@ class C3k2_FCM(C2f):
     def __init__(self, c1, c2, n=1, c3k=False, e=0.5, g=1, shortcut=True):
         """Initializes the C3k2 module, a faster CSP Bottleneck with 2 convolutions and optional C3k blocks."""
         super().__init__(c1, c2, n, shortcut, g, e)
-        self.m = nn.ModuleList(
-            C3k(self.c, self.c, 2, shortcut, g) if c3k else FCM(self.c, self.c) for _ in range(n)
-        )
-
-
-
-
+        self.m = nn.ModuleList(C3k(self.c, self.c, 2, shortcut, g) if c3k else FCM(self.c, self.c) for _ in range(n))
