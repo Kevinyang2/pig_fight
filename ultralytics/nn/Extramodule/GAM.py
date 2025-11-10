@@ -1,9 +1,9 @@
 import torch
 import torch.nn as nn
 
-'''
+"""
 https://arxiv.org/abs/2112.05561
-'''
+"""
 
 
 class GAM(nn.Module):
@@ -18,9 +18,9 @@ class GAM(nn.Module):
         self.relu = nn.ReLU(inplace=True)
         self.linear2 = nn.Linear(inchannel_rate, in_channels)
 
-        self.conv1 = nn.Conv2d(in_channels, inchannel_rate, kernel_size=7, padding=3, padding_mode='replicate')
+        self.conv1 = nn.Conv2d(in_channels, inchannel_rate, kernel_size=7, padding=3, padding_mode="replicate")
 
-        self.conv2 = nn.Conv2d(inchannel_rate, out_channels, kernel_size=7, padding=3, padding_mode='replicate')
+        self.conv2 = nn.Conv2d(inchannel_rate, out_channels, kernel_size=7, padding=3, padding_mode="replicate")
 
         self.norm1 = nn.BatchNorm2d(inchannel_rate)
         self.norm2 = nn.BatchNorm2d(out_channels)
@@ -47,7 +47,7 @@ class GAM(nn.Module):
         return out
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     img = torch.rand(1, 64, 32, 48)
     b, c, h, w = img.shape
     net = GAM(in_channels=c, out_channels=c)
