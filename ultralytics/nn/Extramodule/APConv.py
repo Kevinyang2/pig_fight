@@ -1,7 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from ultralytics.nn.modules.conv import LightConv
 
 """风车型卷积，使用了padding再各个方向上实现方向敏感性，增加了参数量"""
 
@@ -37,7 +35,7 @@ class Conv(nn.Module):
 
 
 class PConv(nn.Module):
-    ''' Pinwheel-shaped Convolution using the Asymmetric Padding method. '''
+    """Pinwheel-shaped Convolution using the Asymmetric Padding method."""
 
     def __init__(self, c1, c2, k, s):
         super().__init__()
@@ -167,6 +165,3 @@ class C3k2_APConv(C2f_APConv):
         self.m = nn.ModuleList(
             C3k(self.c, self.c, 2, shortcut, g) if c3k else Bottleneck(self.c, self.c, shortcut, g) for _ in range(n)
         )
-
-
-
