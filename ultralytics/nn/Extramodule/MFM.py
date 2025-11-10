@@ -34,16 +34,14 @@ class Conv(nn.Module):
 
 class MFM(nn.Module):
     def __init__(self, inc, dim, reduction=8):
-        super(MFM, self).__init__()
+        super().__init__()
 
         self.height = len(inc)
         d = max(int(dim / reduction), 4)
 
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.mlp = nn.Sequential(
-            nn.Conv2d(dim, d, 1, bias=False),
-            nn.ReLU(),
-            nn.Conv2d(d, dim * self.height, 1, bias=False)
+            nn.Conv2d(dim, d, 1, bias=False), nn.ReLU(), nn.Conv2d(d, dim * self.height, 1, bias=False)
         )
 
         self.softmax = nn.Softmax(dim=1)
