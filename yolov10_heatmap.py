@@ -68,9 +68,9 @@ def letterbox(
 
 
 class YoloDetTarget(torch.nn.Module):
-    def __init__(self, ouput_type: str, conf: float, ratio: float, nc: int, class_id: Optional[int] = None) -> None:
+    def __init__(self, output_type: str, conf: float, ratio: float, nc: int, class_id: Optional[int] = None) -> None:
         super().__init__()
-        self.ouput_type = ouput_type
+        self.output_type = output_type
         self.conf = conf
         self.ratio = ratio
         self.nc = nc
@@ -103,7 +103,7 @@ class YoloDetTarget(torch.nn.Module):
         if mask.sum() == 0:
             return torch.tensor(0.0, device=pred.device)
         loss = vals[mask].sum()
-        if self.ouput_type in ("box", "all"):
+        if self.output_type in ("box", "all"):
             loss = loss + boxes[idx[mask]].sum()
         return loss
 
