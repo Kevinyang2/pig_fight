@@ -1,7 +1,8 @@
 import os
+import shutil
+
 import cv2
 import numpy as np
-import shutil
 
 # 输入输出路径
 input_images = "D:\googleDownload\pig_fight_DEC\\valid\images"
@@ -13,11 +14,13 @@ output_labels = "D:\googleDownload\\test_dark/labels"
 os.makedirs(output_images, exist_ok=True)
 os.makedirs(output_labels, exist_ok=True)
 
+
 # Gamma 校正函数
 def adjust_gamma(image, gamma=2.0):
     invGamma = 1.0 / gamma
     table = np.array([(i / 255.0) ** invGamma * 255 for i in np.arange(256)]).astype("uint8")
     return cv2.LUT(image, table)
+
 
 # 遍历处理图像
 for filename in os.listdir(input_images):

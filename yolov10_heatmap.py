@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -5,8 +7,8 @@ warnings.filterwarnings("ignore")
 import argparse
 import os
 import shutil
+from collections.abc import Sequence
 from pathlib import Path
-from typing import List, Sequence, Optional, Dict, Tuple
 
 import cv2
 import numpy as np
@@ -16,19 +18,18 @@ from PIL import Image
 from ultralytics.nn.tasks import attempt_load_weights
 from ultralytics.utils.ops import non_max_suppression, xywh2xyxy
 
-
 try:
     from pytorch_grad_cam import (
+        EigenCAM,
+        EigenGradCAM,
         GradCAM,
         GradCAMPlusPlus,
-        XGradCAM,
-        EigenCAM,
         HiResCAM,
         LayerCAM,
         RandomCAM,
-        EigenGradCAM,
+        XGradCAM,
     )
-    from pytorch_grad_cam.utils.image import show_cam_on_image, scale_cam_image
+    from pytorch_grad_cam.utils.image import scale_cam_image, show_cam_on_image
 except Exception as e:
     raise SystemExit("请先安装: pip install pytorch-grad-cam") from e
 
@@ -49,7 +50,7 @@ def letterbox(
     if not scaleup:
         r = min(r, 1.0)
     ratio = r, r
-    new_unpad = int(round(shape[1] * r)), int(round(shape[0] * r))
+    new_unpad = round(shape[1] * r), round(shape[0] * r)
     dw, dh = new_shape[1] - new_unpad[0], new_shape[0] - new_unpad[1]
     if auto:
         dw, dh = np.mod(dw, stride), np.mod(dh, stride)
@@ -61,23 +62,23 @@ def letterbox(
     dh /= 2
     if shape[::-1] != new_unpad:
         im = cv2.resize(im, new_unpad, interpolation=cv2.INTER_LINEAR)
-    top, bottom = int(round(dh - 0.1)), int(round(dh + 0.1))
-    left, right = int(round(dw - 0.1)), int(round(dw + 0.1))
+    top, bottom = round(dh - 0.1), round(dh + 0.1)
+    left, right = round(dw - 0.1), round(dw + 0.1)
     im = cv2.copyMakeBorder(im, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)
     return im, ratio, (dw, dh)
 
 
 class YoloDetTarget(torch.nn.Module):
-    def __init__(self, ouput_type: str, conf: float, ratio: float, nc: int, class_id: Optional[int] = None) -> None:
+    def __init__(self, output_type: str, conf: float, ratio: float, nc: int, class_id: int | None = None) -> None:
         super().__init__()
-        self.ouput_type = ouput_type
+        self.output_type = output_type
         self.conf = conf
         self.ratio = ratio
         self.nc = nc
         self.class_id = class_id
-        self.selected_indices: Optional[List[int]] = None
+        self.selected_indices: list[int] | None = None
 
-    def set_selected_indices(self, idxs: Optional[List[int]]):
+    def set_selected_indices(self, idxs: list[int] | None):
         self.selected_indices = idxs if idxs is not None and len(idxs) else None
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
@@ -86,7 +87,7 @@ class YoloDetTarget(torch.nn.Module):
             return torch.tensor(0.0)
         if pred.ndim == 2:
             pred = pred.unsqueeze(0)
-        cls_logits = pred[0, :, -self.nc:]
+        cls_logits = pred[0, :, -self.nc :]
         boxes = pred[0, :, :4]
         if self.class_id is not None and 0 <= int(self.class_id) < self.nc:
             scores = cls_logits[:, int(self.class_id)]
@@ -103,14 +104,14 @@ class YoloDetTarget(torch.nn.Module):
         if mask.sum() == 0:
             return torch.tensor(0.0, device=pred.device)
         loss = vals[mask].sum()
-        if self.ouput_type in ("box", "all"):
+        if self.output_type in ("box", "all"):
             loss = loss + boxes[idx[mask]].sum()
         return loss
 
 
-def _probe_activation_hw(model, candidate_ids: List[int], imgsz: int) -> Dict[int, Tuple[int, int]]:
-    """对候选层注册一次性 hook，前向一次记录各层 H,W。"""
-    hw: Dict[int, Tuple[int, int]] = {}
+def _probe_activation_hw(model, candidate_ids: list[int], imgsz: int) -> dict[int, tuple[int, int]]:
+    """对候选层注册一次性 hook，前向一次记录各层 H,W。."""
+    hw: dict[int, tuple[int, int]] = {}
     hooks = []
 
     def make_hook(idx):
@@ -120,6 +121,7 @@ def _probe_activation_hw(model, candidate_ids: List[int], imgsz: int) -> Dict[in
             if torch.is_tensor(out) and out.ndim >= 4:
                 _, _, h, w = out.shape[:4]
                 hw[idx] = (int(h), int(w))
+
         return _hook
 
     for idx in candidate_ids:
@@ -137,8 +139,8 @@ def _probe_activation_hw(model, candidate_ids: List[int], imgsz: int) -> Dict[in
     return hw
 
 
-def auto_select_layers(model, k: int = 5, max_hw: int = 1600, imgsz: int = 640) -> List[int]:
-    """优先选择尾部可训练卷积层；按激活图面积筛选不超过 max_hw 的小特征图，避免 CAM 内存爆炸。"""
+def auto_select_layers(model, k: int = 5, max_hw: int = 1600, imgsz: int = 640) -> list[int]:
+    """优先选择尾部可训练卷积层；按激活图面积筛选不超过 max_hw 的小特征图，避免 CAM 内存爆炸。."""
     candidates = []
     for i, m in reversed(list(enumerate(model.model))):
         if isinstance(m, torch.nn.Conv2d):
@@ -167,9 +169,9 @@ class YoloV10Heatmap:
         weights: str,
         device: str,
         method: str,
-        layers: Optional[Sequence[int]],
+        layers: Sequence[int] | None,
         backward_type: str,
-        class_id: Optional[int],
+        class_id: int | None,
         conf_threshold: float,
         iou_threshold: float,
         ratio: float,
@@ -199,9 +201,7 @@ class YoloV10Heatmap:
         self.topk_dets = topk_dets
 
         self.layers = (
-            list(layers)
-            if layers is not None
-            else auto_select_layers(self.model, k=3, max_hw=1600, imgsz=imgsz)
+            list(layers) if layers is not None else auto_select_layers(self.model, k=3, max_hw=1600, imgsz=imgsz)
         )
         self.target_layers = [self.model.model[l] for l in self.layers]
 
@@ -262,7 +262,7 @@ class YoloV10Heatmap:
         with torch.no_grad():
             pred_raw = self.model(tensor)[0]
         det = self._post_process(pred_raw)
-        selected_indices: Optional[List[int]] = None
+        selected_indices: list[int] | None = None
         if det is not None and len(det):
             det_for_match = det
             if self.target.class_id is not None and det.shape[1] >= 6:
@@ -306,7 +306,7 @@ class YoloV10Heatmap:
                     grayscale_cam = self.cam(tensor, targets=[self.target])[0]
                 except Exception:
                     pass
-            if 'grayscale_cam' not in locals():
+            if "grayscale_cam" not in locals():
                 self.layers = auto_select_layers(self.model, k=2, max_hw=800, imgsz=self.imgsz)
                 self.target_layers = [self.model.model[l] for l in self.layers]
                 self.cam = self._build_cam(self.method_name)
@@ -314,7 +314,7 @@ class YoloV10Heatmap:
                     grayscale_cam = self.cam(tensor, targets=[self.target])[0]
                 except Exception:
                     pass
-            if 'grayscale_cam' not in locals():
+            if "grayscale_cam" not in locals():
                 self.method_name = "EigenCAM"
                 self.cam = self._build_cam(self.method_name)
                 grayscale_cam = self.cam(tensor, targets=[self.target])[0]
