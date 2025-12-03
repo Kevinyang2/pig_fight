@@ -1,0 +1,294 @@
+{"database":
+{  "MyVideo_191":
+  {"subset": "test", "annotations":
+  [{"segment": ["93.1", "98.2"], "label": "fight"},
+    {"segment": ["101.6", "114.0"], "label": "fight"},
+    {"segment": ["137.5", "143.1"], "label": "fight"}
+  ]
+  },
+  "MyVideo_192": {"subset": "test", "annotations":
+  [
+    {"segment": ["45.0", "53.0"], "label": "fight"},
+    {"segment": ["61.8", "65.1"], "label": "fight"}
+  ]
+  },
+  "MyVideo_193": {"subset": "test", "annotations":
+  [
+    {"segment": ["67.0", "74.0"], "label": "fight"}
+  ]
+  },
+  "MyVideo_194": {"subset": "test", "annotations":
+  [
+    {"segment": ["36.2", "38.6"], "label": "fight"},
+    {"segment": ["51.2", "110.0"], "label": "fight"},
+    {"segment": ["158.2", "164.6"], "label": "fight"}
+  ]
+  },
+  "MyVideo_195": {"subset": "test", "annotations":
+  [
+    {"segment": ["21.2", "28.9"], "label": "fight"},
+    {"segment": ["31.5", "33.5"], "label": "fight"},
+    {"segment": ["35.0", "52.3"], "label": "fight"},
+    {"segment": ["56.2", "64.5"], "label": "fight"},
+    {"segment": ["64.1", "67.1"], "label": "fight"}
+  ]
+  },
+  "MyVideo_196": {"subset": "test", "annotations":
+  [
+    {"segment": ["51.9", "95.2"], "label": "fight"},
+    {"segment": ["97.2", "104.1"], "label": "fight"}
+  ]
+  },
+  "MyVideo_197": {"subset": "test", "annotations":
+  [
+    {"segment": ["49.0", "56.8"], "label": "fight"},
+    {"segment": ["79.1", "84.1"], "label": "fight"},
+    {"segment": ["127.9", "130.5"], "label": "fight"}
+  ]
+  },
+  "MyVideo_199": {"subset": "test", "annotations":
+  [
+    {"segment": ["25.1", "34.5"], "label": "fight"}
+  ]
+  },
+  "MyVideo_201": {"subset": "test", "annotations":
+  [
+    {"segment": ["42.1", "49.1"], "label": "fight"},
+    {"segment": ["92.0", "96.8"], "label": "fight"},
+    {"segment": ["138.9", "140.8"], "label": "fight"}
+  ]
+  },
+  "MyVideo_203": {"subset": "test", "annotations":
+  [
+    {"segment": ["22.4", "54.5"], "label": "fight"},
+    {"segment": ["57.1", "62.1"], "label": "fight"},
+    {"segment": ["87.2", "97.5"], "label": "fight"}
+  ]
+  },
+  "MyVideo_208": {"subset": "test", "annotations":
+  [
+     {"segment": ["47.1", "60.5"], "label": "fight"},
+    {"segment": ["64.0", "107.5"], "label": "fight"},
+    {"segment": ["111.1", "124.5"], "label": "fight"},
+    {"segment": ["129.1", "137.5"], "label": "fight"},
+    {"segment": ["140.1", "159.2"], "label": "fight"},
+    {"segment": ["164.1", "173.1"], "label": "fight"},
+    {"segment": ["175.5", "177.5"], "label": "fight"},
+    {"segment": ["180.5", "186.2"], "label": "fight"},
+    {"segment": ["195.1", "198.2"], "label": "fight"},
+    {"segment": ["202.1", "214.5"], "label": "fight"},
+    {"segment": ["228.5", "265.5"], "label": "fight"},
+    {"segment": ["273.3", "277.2"], "label": "fight"},
+    {"segment": ["287.2", "292.5"], "label": "fight"},
+    {"segment": ["316.1", "325.1"], "label": "fight"},
+    {"segment": ["328.2", "339.5"], "label": "fight"}
+  ]
+  },
+  "MyVideo_232": {"subset": "test", "annotations":
+  [{"segment": ["38.6", "43.6"], "label": "fight"}]},
+  "MyVideo_233": {"subset": "test", "annotations":
+  [{"segment": ["23.5", "30.2"], "label": "fight"},
+    {"segment": ["37.8", "44.5"], "label": "fight"},
+    {"segment": ["78.1", "82.9"], "label": "fight"},
+    {"segment": ["114.0", "120.4"], "label": "fight"},
+    {"segment": ["122.6", "127.4"], "label": "fight"}]},
+  "MyVideo_234": {"subset": "test", "annotations":
+  [{"segment": ["55.1", "57.9"], "label": "fight"}
+
+  ]},
+  "MyVideo_235": {"subset": "test", "annotations":
+  [
+    {"segment": ["33.0", "40.0"], "label": "fight"}
+  ]},
+  "MyVideo_236": {"subset": "test", "annotations":
+  [
+    {"segment": ["82.5", "91.3"], "label": "fight"}
+  ]},
+  "MyVideo_237": {"subset": "test", "annotations":
+  [{"segment": ["16.5", "27.8"], "label": "fight"},
+
+    {"segment": ["30.1", "37.8"], "label": "fight"},
+    {"segment": ["40.5", "50.8"], "label": "fight"},
+    {"segment": ["53.2", "66.5"], "label": "fight"},
+    {"segment": ["69.6", "72.4"], "label": "fight"},
+    {"segment": ["82.4", "90.2"], "label": "fight"}
+  ]},
+  "MyVideo_238": {"subset": "test", "annotations":
+  [
+    {"segment": ["8.9", "17.8"], "label": "fight"},
+    {"segment": ["22.5", "24.8"], "label": "fight"},
+    {"segment": ["27.2", "38.2"], "label": "fight"},
+    {"segment": ["38.5", "54.5"], "label": "fight"},
+    {"segment": ["62.9", "72.9"], "label": "fight"},
+    {"segment": ["81.2", "87.2"], "label": "fight"},
+    {"segment": ["89.2", "97.2"], "label": "fight"}
+  ]},
+  "MyVideo_239": {"subset": "test", "annotations":
+  [
+    {"segment": ["26.2", "32.5"], "label": "fight"},
+    {"segment": ["59.5", "64.3"], "label": "fight"},
+    {"segment": ["72.5", "76.9"], "label": "fight"},
+    {"segment": ["83.7", "97.8"], "label": "fight"},
+    {"segment": ["146.2", "150.8"], "label": "fight"},
+    {"segment": ["149.3", "154.0"], "label": "fight"}
+  ]},
+  "MyVideo_240": {"subset": "test", "annotations":
+  [
+    {"segment": ["25.6", "31.3"], "label": "fight"},
+    {"segment": ["39.2", "47.7"], "label": "fight"},
+    {"segment": ["56.2", "61.7"], "label": "fight"},
+    {"segment": ["74.1", "77.2"], "label": "fight"}
+
+  ]},
+  "MyVideo_241": {"subset": "test", "annotations":
+  [
+    {"segment": ["76.1", "84.1"], "label": "fight"}
+  ]},
+  "MyVideo_242": {"subset": "test", "annotations":
+  [
+    {"segment": ["34.2", "39.8"], "label": "fight"},
+    {"segment": ["100.1", "107.3"], "label": "fight"},
+    {"segment": ["119.2", "127.2"], "label": "fight"}
+
+  ]},
+  "MyVideo_243": {"subset": "test", "annotations":
+  [
+    {"segment": ["42.5", "47.2"], "label": "fight"},
+    {"segment": ["69.1", "72.5"], "label": "fight"},
+    {"segment": ["97.5", "100.1"], "label": "fight"}
+  ]},
+  "MyVideo_244": {"subset": "test", "annotations":
+  [
+    {"segment": ["25.1", "30.9"], "label": "fight"},
+    {"segment": ["35.1", "41.1"], "label": "fight"},
+    {"segment": ["42.5", "48.9"], "label": "fight"},
+    {"segment": ["95.1", "101.6"], "label": "fight"},
+    {"segment": ["125.5", "136.8"], "label": "fight"},
+    {"segment": ["185.9", "194.2"], "label": "fight"}
+  ]},
+  "MyVideo_245": {"subset": "test", "annotations":
+  [
+    {"segment": ["61.5", "66.4"], "label": "fight"},
+    {"segment": ["69.8", "80.1"], "label": "fight"},
+    {"segment": ["81.5", "90.8"], "label": "fight"}
+
+  ]},
+  "MyVideo_246": {"subset": "test", "annotations":
+  [{"segment": ["59.7", "63.9"], "label": "fight"}]},
+  "MyVideo_247": {"subset": "test", "annotations":
+  [
+    {"segment": ["52.2", "58.5"], "label": "fight"},
+    {"segment": ["123.2", "126.1"], "label": "fight"},
+    {"segment": ["127.7", "136.3"], "label": "fight"},
+    {"segment": ["136.5", "144.7"], "label": "fight"}
+  ]},
+  "MyVideo_248": {"subset": "test", "annotations":
+  [
+    {"segment": ["48.9", "59.2"], "label": "fight"},
+    {"segment": ["65.8", "69.1"], "label": "fight"},
+    {"segment": ["145.6", "152.8"], "label": "fight"},
+    {"segment": ["155.2", "167.2"], "label": "fight"},
+    {"segment": ["172.4", "177.2"], "label": "fight"},
+    {"segment": ["182.2", "186.5"], "label": "fight"},
+    {"segment": ["262.3", "273.8"], "label": "fight"},
+    {"segment": ["302.1", "307.1"], "label": "fight"},
+    {"segment": ["328.9", "337.5"], "label": "fight"},
+    {"segment": ["335.9", "341.1"], "label": "fight"}
+  ]},
+  "MyVideo_249": {"subset": "test", "annotations":
+  [
+    {"segment": ["102.5", "105.2"], "label": "fight"},
+    {"segment": ["118.8", "124.9"], "label": "fight"},
+    {"segment": ["196.5", "203.1"], "label": "fight"},
+    {"segment": ["232.8", "242.1"], "label": "fight"}
+  ]},
+  "MyVideo_250": {"subset": "test", "annotations":
+  [
+    {"segment": ["34.3", "42.5"], "label": "fight"},
+    {"segment": ["44.6", "48.8"], "label": "fight"},
+    {"segment": ["126.8", "134.2"], "label": "fight"}
+  ]},
+  "MyVideo_251": {"subset": "test", "annotations":
+  [
+    {"segment": ["45.1", "49.5"], "label": "fight"},
+    {"segment": ["54.2", "67.1"], "label": "fight"}
+
+  ]},
+  "MyVideo_252": {"subset": "test", "annotations":
+  [
+    {"segment": ["22.8", "30.5"], "label": "fight"},
+    {"segment": ["40.2", "46.1"], "label": "fight"},
+    {"segment": ["89.6", "93.2"], "label": "fight"},
+    {"segment": ["102.5", "106.3"], "label": "fight"},
+    {"segment": ["117.2", "130.8"], "label": "fight"},
+    {"segment": ["133.8", "145.2"], "label": "fight"},
+    {"segment": ["173.5", "180.8"], "label": "fight"},
+    {"segment": ["183.5", "187.8"], "label": "fight"},
+    {"segment": ["189.8", "194.4"], "label": "fight"}
+  ]},
+  "MyVideo_253": {"subset": "test", "annotations":
+  [
+    {"segment": ["19.2", "23.5"], "label": "fight"},
+    {"segment": ["25.2", "26.7"], "label": "fight"},
+    {"segment": ["39.7", "48.2"], "label": "fight"},
+    {"segment": ["50.8", "54.5"], "label": "fight"},
+    {"segment": ["63.6", "70.6"], "label": "fight"},
+    {"segment": ["120.3", "133.2"], "label": "fight"},
+    {"segment": ["147.9", "160.2"], "label": "fight"},
+    {"segment": ["164.8", "168.5"], "label": "fight"}
+  ]},
+  "MyVideo_254": {"subset": "test", "annotations":
+  [
+    {"segment": ["4.2", "13.8"], "label": "fight"},
+    {"segment": ["19.5", "22.8"], "label": "fight"},
+    {"segment": ["64.5", "74.8"], "label": "fight"},
+    {"segment": ["85.5", "100.5"], "label": "fight"}
+  ]},
+  "MyVideo_255": {"subset": "test", "annotations":
+  [
+    {"segment": ["38.5", "51.2"], "label": "fight"},
+    {"segment": ["53.5", "57.5"], "label": "fight"},
+    {"segment": ["61.2", "72.5"], "label": "fight"},
+    {"segment": ["83.8", "86.8"], "label": "fight"},
+    {"segment": ["101.8", "107.5"], "label": "fight"},
+    {"segment": ["141.5", "145.8"], "label": "fight"},
+    {"segment": ["158.2", "160.5"], "label": "fight"}
+  ]},
+  "MyVideo_256": {"subset": "test", "annotations":
+  [
+    {"segment": ["41.8", "50.5"], "label": "fight"},
+    {"segment": ["54.5", "58.2"], "label": "fight"},
+    {"segment": ["60.5", "67.5"], "label": "fight"},
+    {"segment": ["89.5", "95.2"], "label": "fight"}
+  ]},
+  "MyVideo_257": {"subset": "test", "annotations":
+  [
+    {"segment": ["12.5", "22.8"], "label": "fight"},
+    {"segment": ["23.8", "36.2"], "label": "fight"},
+    {"segment": ["43.1", "51.5"], "label": "fight"}
+  ]},
+  "MyVideo_258": {"subset": "test", "annotations":
+  [
+    {"segment": ["20.6", "25.4"], "label": "fight"},
+    {"segment": ["31.2", "33.2"], "label": "fight"},
+    {"segment": ["48.5", "57.5"], "label": "fight"}
+  ]},
+  "MyVideo_259": {"subset": "test", "annotations":
+  [
+    {"segment": ["41.8", "43.5"], "label": "fight"},
+    {"segment": ["48.2", "51.3"], "label": "fight"}
+  ]},
+  "MyVideo_260": {"subset": "test", "annotations":
+  [
+    {"segment": ["19.8", "22.9"], "label": "fight"},
+    {"segment": ["27.2", "36.5"], "label": "fight"}
+  ]},
+  "MyVideo_261": {"subset": "test", "annotations":
+  [
+    {"segment": ["44.4", "48.7"], "label": "fight"},
+    {"segment": ["55.3", "57.1"], "label": "fight"},
+    {"segment": ["63.5", "67.2"], "label": "fight"},
+    {"segment": ["78.8", "85.2"], "label": "fight"},
+    {"segment": ["88.2", "107.5"], "label": "fight"}
+  ]}
+}}

@@ -1,6 +1,5 @@
 from .CBAM import  *
 from .ECA import *
-from .GAM import *
 from .SimAm import *
 from .FBRT_YOLO import *
 from .FreqFusion import *

@@ -4,13 +4,13 @@ warnings.filterwarnings('ignore')
 from ultralytics import YOLO
 
 if __name__ == '__main__':
-    model = YOLO('runs/train/v10-APConv-AssemFormer-HSFPN-ATFLm_exp/weights/best.pt')
+    model = YOLO('runs/train/v8-test_strawberry/weights/best.pt')
     model.val(
         # 数据集配置文件的路径，指定验证集的位置和类别信息
         # 作用：告诉模型验证集的相关信息，如图片路径、标注文件路径、类别数量等
         # 调整建议：根据实际数据集的配置文件进行修改
         # 默认值：无，必须指定
-        data='pig.yaml',
+        data='/home/test/YJF/data/strawberries/strawberries2.yaml',
 
         # 输入图像的大小，将图像调整为此尺寸进行推理
         # 作用：统一输入图像的尺寸，便于模型处理

@@ -1,0 +1,94 @@
+====================================
+  GPU设备选择说明
+====================================
+
+如何切换GPU设备
+------------------------------------
+
+在 pyqt5_detection_viewer.py 第138行找到：
+
+self.gpu_device = "0"  # 默认使用CUDA:0
+
+修改为：
+
+【使用CUDA:0（默认）】
+self.gpu_device = "0"
+
+【使用CUDA:1（第二个GPU）】
+self.gpu_device = "1"
+
+【使用CUDA:2（第三个GPU）】
+self.gpu_device = "2"
+
+【使用CPU】
+self.gpu_device = "cpu"
+
+
+查看可用GPU
+------------------------------------
+
+在Python中运行：
+
+import torch
+print(f"CUDA可用: {torch.cuda.is_available()}")
+print(f"GPU数量: {torch.cuda.device_count()}")
+
+for i in range(torch.cuda.device_count()):
+    print(f"GPU {i}: {torch.cuda.get_device_name(i)}")
+
+
+输出示例：
+CUDA可用: True
+GPU数量: 2
+GPU 0: NVIDIA GeForce RTX 3090
+GPU 1: NVIDIA GeForce RTX 3080
+
+
+多GPU场景
+------------------------------------
+
+【场景1：单GPU】
+只有一个GPU → 使用 "0"
+
+【场景2：双GPU】
+GPU 0: 主GPU（推荐）
+GPU 1: 副GPU
+
+建议：使用主GPU性能更好
+self.gpu_device = "0"
+
+【场景3：多GPU】
+选择显存最大或最空闲的GPU
+查看显存使用：nvidia-smi
+
+
+性能对比
+------------------------------------
+
+CUDA:0 (RTX 3090)
+  检测速度：~30ms/张
+  批量检测：很快
+
+CUDA:1 (GTX 1080)
+  检测速度：~50ms/张
+  批量检测：较快
+
+CPU
+  检测速度：~200ms/张
+  批量检测：较慢
+  适合：无GPU环境
+
+
+修改后重启程序
+------------------------------------
+
+1. 修改 pyqt5_detection_viewer.py
+2. 保存文件
+3. 重新运行程序
+4. 所有检测都会使用新的GPU设备
+
+
+====================================
+  推荐设置：使用最强的GPU（通常是0）
+====================================
+

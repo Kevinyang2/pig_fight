@@ -1,0 +1,99 @@
+═══════════════════════════════════════════════════════════════
+     单文件打包命令（--onefile 模式）
+═══════════════════════════════════════════════════════════════
+
+🎯 作用：将所有内容打包成一个 .exe 文件
+   优点：便于分发，只有一个文件
+   缺点：启动较慢（3-10秒），每次运行都要解压
+
+═══════════════════════════════════════════════════════════════
+📋 单文件打包命令（完整版）
+═══════════════════════════════════════════════════════════════
+
+conda activate yolov11
+cd D:\ultralytics\pig_counts
+rd /s /q build dist
+
+pyinstaller --name=可见光成像叶片表面缺陷检测系统 ^
+--onefile ^
+--windowed ^
+--add-data=login_window.py;. ^
+--add-data=json_analyzer.py;. ^
+--add-data=best.pt;. ^
+--add-data=bj2.png;. ^
+--collect-all=ultralytics ^
+--collect-submodules=timm ^
+--copy-metadata=torch ^
+--copy-metadata=torchvision ^
+--copy-metadata=ultralytics ^
+--copy-metadata=timm ^
+--copy-metadata=numpy ^
+--hidden-import=cv2 ^
+--hidden-import=einops ^
+--hidden-import=timm ^
+--hidden-import=numpy.core._multiarray_tests ^
+--hidden-import=numpy.core._multiarray_umath ^
+--hidden-import=ultralytics ^
+--hidden-import=ultralytics.models ^
+--hidden-import=ultralytics.nn ^
+--hidden-import=ultralytics.utils ^
+--hidden-import=ultralytics.engine ^
+--hidden-import=ultralytics.data ^
+--exclude-module=matplotlib ^
+--exclude-module=pandas ^
+--exclude-module=scipy ^
+--exclude-module=tkinter ^
+--exclude-module=pytest ^
+--exclude-module=IPython ^
+--exclude-module=jupyter ^
+--exclude-module=sqlite3 ^
+--exclude-module=jinja2 ^
+--exclude-module=pygments ^
+--exclude-module=onnxruntime ^
+--noconfirm ^
+--clean ^
+pyqt5_detection_viewer.py
+
+═══════════════════════════════════════════════════════════════
+⚡ 单行版本（复制到 CMD）
+═══════════════════════════════════════════════════════════════
+
+conda activate yolov11 && cd D:\ultralytics\pig_counts && rd /s /q build dist && pyinstaller --name=可见光成像叶片表面缺陷检测系统 --onefile --windowed --add-data=login_window.py;. --add-data=json_analyzer.py;. --add-data=best.pt;. --add-data=bj2.png;. --collect-all=ultralytics --collect-submodules=timm --copy-metadata=torch --copy-metadata=torchvision --copy-metadata=ultralytics --copy-metadata=timm --copy-metadata=numpy --hidden-import=cv2 --hidden-import=einops --hidden-import=timm --hidden-import=numpy.core._multiarray_tests --hidden-import=numpy.core._multiarray_umath --hidden-import=ultralytics --exclude-module=matplotlib --exclude-module=pandas --exclude-module=scipy --exclude-module=tkinter --exclude-module=pytest --exclude-module=IPython --exclude-module=jupyter --exclude-module=sqlite3 --exclude-module=jinja2 --exclude-module=onnxruntime --noconfirm --clean pyqt5_detection_viewer.py
+
+═══════════════════════════════════════════════════════════════
+📊 单文件 vs 目录模式对比
+═══════════════════════════════════════════════════════════════
+
+特性              │ 目录模式          │ 单文件模式
+─────────────────┼──────────────────┼─────────────────
+文件数量          │ exe + _internal   │ 只有一个 exe
+体积              │ 稍大              │ 稍小（压缩）
+启动速度          │ 快（1-2秒）       │ 慢（3-10秒）
+便于分发          │ 需要整个文件夹     │ 只需一个文件 ⭐
+运行时            │ 直接运行          │ 每次解压到临时目录
+杀毒软件          │ 误报率低          │ 误报率稍高
+
+═══════════════════════════════════════════════════════════════
+📊 预期体积（单文件模式）
+═══════════════════════════════════════════════════════════════
+
+配置                     │ 单文件体积
+────────────────────────┼─────────────────
+GPU 版 + 包含所有依赖    │ ~800 MB - 1.2 GB
+CPU 版 + 包含所有依赖    │ ~500 MB - 800 MB
+
+注意：单文件会比目录模式略小（因为有压缩）
+
+═══════════════════════════════════════════════════════════════
+⏱️ 打包时间
+═══════════════════════════════════════════════════════════════
+
+单文件打包需要更长时间（20-30 分钟）：
+- 收集所有文件（和目录模式相同）
+- 压缩所有内容
+- 创建自解压可执行文件
+
+请耐心等待！
+
+═══════════════════════════════════════════════════════════════
+

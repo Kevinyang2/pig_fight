@@ -1,0 +1,60 @@
+
+conda activate yolov11
+cd D:\ultralytics\pig_counts
+
+REM 安装必要的工具
+pip install pyinstaller timm einops
+
+REM 优化后的打包命令 - 大幅减小体积（目录模式，更快）
+pyinstaller --name=可见光成像叶片表面缺陷检测系统 ^
+--windowed ^
+--add-data=login_window.py;. ^
+--add-data=json_analyzer.py;. ^
+--add-data=best.pt;. ^
+--add-data=bj2.png;. ^
+--copy-metadata=torch ^
+--copy-metadata=torchvision ^
+--copy-metadata=ultralytics ^
+--copy-metadata=numpy ^
+--copy-metadata=timm ^
+--collect-all=ultralytics ^
+--collect-data=ultralytics ^
+--collect-submodules=timm ^
+--hidden-import=cv2 ^
+--hidden-import=einops ^
+--hidden-import=timm ^
+--hidden-import=numpy.core._multiarray_tests ^
+--hidden-import=numpy.core._multiarray_umath ^
+--hidden-import=ultralytics ^
+--hidden-import=ultralytics.models ^
+--hidden-import=ultralytics.nn ^
+--hidden-import=ultralytics.utils ^
+--hidden-import=ultralytics.engine ^
+--hidden-import=ultralytics.data ^
+--exclude-module=matplotlib ^
+--exclude-module=matplotlib.pyplot ^
+--exclude-module=pandas ^
+--exclude-module=scipy ^
+--exclude-module=tkinter ^
+--exclude-module=unittest ^
+--exclude-module=pytest ^
+--exclude-module=IPython ^
+--exclude-module=jupyter ^
+--exclude-module=notebook ^
+--exclude-module=tensorboard ^
+--exclude-module=pip ^
+--exclude-module=wheel ^
+--exclude-module=sqlite3 ^
+--exclude-module=jinja2 ^
+--exclude-module=pygments ^
+--exclude-module=jedi ^
+--exclude-module=parso ^
+--exclude-module=onnxruntime ^
+--exclude-module=PIL.ImageQt ^
+--exclude-module=PIL.SpiderImagePlugin ^
+--noconfirm ^
+--clean ^
+pyqt5_detection_viewer.py
+
+REM 如果需要单文件版本（启动较慢），在上面命令中添加 --onefile 参数
+REM 注意：打包后的文件夹约 800MB-1.2GB（目录模式）或单文件 500MB-800MB

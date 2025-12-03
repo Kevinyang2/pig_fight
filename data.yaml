@@ -1,0 +1,7 @@
+train: F:\fengji\train
+val: F:\fengji\valid
+test: F:\fengji\test
+
+nc: 7
+names: ['burning', 'crack', 'deformity', 'dirt', 'oil', 'peeling', 'rusty']
+

@@ -1,0 +1,12 @@
+{
+  "video": "MyVideo_191.mp4",
+  "segments": [],
+  "total_frames": 5058,
+  "parameters": {
+    "window_size": 30,
+    "stride": 15,
+    "distance_threshold": 100,
+    "speed_threshold": 50,
+    "min_fight_duration": 15
+  }
+}

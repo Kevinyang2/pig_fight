@@ -1,11 +1,12 @@
-train:  D:\googleDownload\pig_fight_DEC\train # train images (relative to 'path') 4 images
-val: D:\googleDownload\pig_fight_DEC\valid-dark  # val images (relative to 'path') 4 images
+train:  D:\EageDonwload\pig_counts\train # train images (relative to 'path') 4 images
+val: D:\EageDonwload\pig_counts\valid  # val images (relative to 'path') 4 images
 #test: D:\googleDownload\pig_data\test
 
-nc: 2
+nc: 1
 
 # class names
-names: ['pig_fight','pig_normal']
+# names: ['pig_fight','pig_normal']
+names: ['pig']
 
 augment: False
 #erasing: 0.3

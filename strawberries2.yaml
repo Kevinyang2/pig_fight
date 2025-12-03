@@ -1,0 +1,6 @@
+
+train: /home/test/YJF/data/strawberries/training
+val: /home/test/YJF/data/strawberries/val_LR
+
+nc: 3
+names: ['ripe', 'unripe', 'peduncle']
